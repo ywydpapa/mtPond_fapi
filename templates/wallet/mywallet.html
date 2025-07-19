@@ -65,7 +65,7 @@
                                 {% for coin in mycoins %}
                                 <tr>
                                     <td class="coins" style="text-align: center">
-                                        {{ coin["currency"] }}
+                                        <a href="https://upbit.com/exchange?code=CRIX.UPBIT.KRW-{{ coin['currency'] }}" target="_blank">{{ coin["currency"] }}</a>
                                     </td>
                                     <td class="vola" style="text-align: right"> {{ coin["balance"]|currency }}</td>
                                     <td class="volb" style="text-align: right">{{ coin["locked"] }}</td>
