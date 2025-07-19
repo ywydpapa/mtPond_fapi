@@ -213,14 +213,13 @@ ws.onclose = function() {
     console.log("WebSocket closed");
 };
 
-// 숫자 안전 파싱 함수 (NaN 방지 및 콤마 제거)
+
 function safeParseFloat(val) {
     if (typeof val === "undefined" || val === null) return 0;
     let v = parseFloat(val.toString().replace(/,/g, ''));
     return isNaN(v) ? 0 : v;
 }
 
-// 숫자 천단위 콤마
 function numberWithCommas(x) {
     x = x.toString();
     var parts = x.split(".");
@@ -228,12 +227,11 @@ function numberWithCommas(x) {
     return parts.length > 1 ? parts[0] + "." + parts[1] : parts[0];
 }
 
-// 숫자에서 콤마 등 모든 비숫자 제거
 function numberNoneCommas(x) {
     return x.toString().replace(/[\D\s\._\-]+/g, "");
 }
 
-// 자산 테이블 계산
+
 function calcvalue() {
     let $Aarr = $(".vola");           // 잔고
     let $Barr = $(".volb");           // 거래중
@@ -243,7 +241,6 @@ function calcvalue() {
     let $Farr = $(".balanceprice");   // 평가금액
     let $Garr = $(".balancerate");    // 평가/구매 비율
     let $Harr = $(".balancediff");    // 평가/구매 차액
-
     let wonsum = 0;
     let estsum = 0;
     let sumdiff = 0;
@@ -252,20 +249,15 @@ function calcvalue() {
         let bval = safeParseFloat($Barr[i].innerText); // 거래중
         let cval = safeParseFloat($Carr[i].innerText); // 평균매입가
         let dval = safeParseFloat($Darr[i].innerText); // 현재가
-
         if (cval === 0) cval = 1;
         if (dval === 0) dval = 1;
-
         let nprice = Math.round((aval + bval) * cval); // 구매금액
         let estpr = Math.round((aval + bval) * dval);  // 평가금액
         let estrate = nprice === 0 ? 0 : (100 - ((nprice - estpr) / nprice * 100));
         estrate = estrate.toFixed(2);
-
         wonsum += nprice;
         estsum += estpr;
         let baldiff = estpr - nprice;
-
-        // 표에 반영
         $Aarr[i].innerText = numberWithCommas(aval);
         $Barr[i].innerText = numberWithCommas(bval);
         $Carr[i].innerText = numberWithCommas(cval);
@@ -274,8 +266,6 @@ function calcvalue() {
         $Farr[i].innerText = numberWithCommas(estpr);
         $Garr[i].innerText = estrate;
         $Harr[i].innerText = numberWithCommas(baldiff);
-
-        // 색상 표시
         if (estrate < 100) {
             $Garr[i].style.color = "red";
             $Harr[i].style.color = "red";
@@ -290,7 +280,6 @@ function calcvalue() {
     $("#sumdiff").html(sumdiff);
 }
 
-// 매도 함수
 function sellcoin(uno, skey, coinn, volum) {
     if (confirm("본 코인을 시장가로 매도하시겠습니까?")) {
         let rate = $("#sellrate option:selected").val();
@@ -310,7 +299,6 @@ function sellcoin(uno, skey, coinn, volum) {
     }
 }
 
-// 매수 함수
 function buycoin(uno, skey, coinn) {
     if (confirm("본 코인을 시장가로 매수하시겠습니까?")) {
         let costk = numberNoneCommas($("#buyamt").val());
@@ -329,7 +317,6 @@ function buycoin(uno, skey, coinn) {
     }
 }
 
-// 신호등 불러오기 (옵션)
 function loadTSignals() {
     $(".tsignal").each(function () {
         var coin = $(this).data("coin");

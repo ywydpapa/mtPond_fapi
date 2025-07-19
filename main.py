@@ -303,6 +303,10 @@ async def my_balance(request: Request, uno: int, user_session: int = Depends(req
 async def tradebuymarket(request: Request,uno: int,setkey:str, coinn: str, costk: float, user_session: int = Depends(require_login), db: AsyncSession = Depends(get_db)):
     if uno != user_session:
         return JSONResponse({"success": False, "message": "권한이 없습니다.", "redirect": "/"})
+    else:
+        ssesskey = request.session.get("setKey")
+        if int(setkey) != int(ssesskey):
+            return JSONResponse({"success": False, "message": "권한이 없습니다.", "redirect": "/"})
     try:
         coink = "KRW-" + coinn
         butm = await buycoinmarket(uno, coink, setkey, costk,db)
@@ -320,6 +324,10 @@ async def tradebuymarket(request: Request,uno: int,setkey:str, coinn: str, costk
 async def tradesellmarket(request: Request,uno: int,setkey:str, coinn: str, volm: float, user_session: int = Depends(require_login), db: AsyncSession = Depends(get_db)):
     if uno != user_session:
         return JSONResponse({"success": False, "message": "권한이 없습니다.", "redirect": "/"})
+    else:
+        ssesskey = request.session.get("setKey")
+        if int(setkey) != int(ssesskey):
+            return JSONResponse({"success": False, "message": "권한이 없습니다.", "redirect": "/"})
     try:
         coink = "KRW-" + coinn
         sellm = await sellcoinpercent(uno, coink, setkey, volm ,db)
