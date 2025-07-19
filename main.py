@@ -333,25 +333,26 @@ async def tradesellmarket(request: Request,uno: int,setkey:str, coinn: str, volm
         print("Error!!", e)
         return JSONResponse({"success": False, "message": "서버 오류", "redirect": f"/balance/{uno}"})
 
-@app.websocket("/ws/coinprice/{coink}")
-async def coin_price_ws(websocket: WebSocket, coink: str, db: AsyncSession = Depends(get_db)):
+@app.websocket("/ws/coinprice")
+async def coin_price_ws(websocket: WebSocket):
     await websocket.accept()
+    coins = websocket.query_params.get("coins", "")
+    coin_list = coins.split(",") if coins else []
     try:
-        async for current_price in upbit_ws_price_stream(coink):
-            await websocket.send_json({"coink": coink, "current_price": current_price})
+        async for market, current_price, change in upbit_ws_price_stream(coin_list):
+            await websocket.send_json({"market": market, "current_price": current_price, "change": change})
     except WebSocketDisconnect:
-        print(f"WebSocket disconnected: coin {coink}")
+        print(f"WebSocket disconnected: coins {coin_list}")
     except Exception as e:
         print("WebSocket Error:", e)
 
-
-async def upbit_ws_price_stream(market: str):
+async def upbit_ws_price_stream(markets: list):
     uri = "wss://api.upbit.com/websocket/v1"
     subscribe_data = [{
         "ticket": "test",
     }, {
         "type": "ticker",
-        "codes": [market],
+        "codes": markets,
         "isOnlyRealtime": True
     }]
     async with websockets.connect(uri, ping_interval=60) as websocket:
@@ -359,5 +360,5 @@ async def upbit_ws_price_stream(market: str):
         while True:
             data = await websocket.recv()
             parsed = json.loads(data)
-            yield parsed['trade_price']  # 실시간 체결가
+            yield parsed['code'], parsed['trade_price'], parsed['change']
 
