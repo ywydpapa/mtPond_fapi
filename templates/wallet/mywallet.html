@@ -56,8 +56,8 @@
                                     <th>변화</th>
                                     <th>구매금액</th>
                                     <th>평가금액</th>
-                                    <th>평가/구매 비율(%)</th>
-                                    <th>평가/구매 차액(원)</th>
+                                    <th>평가/구매(%)</th>
+                                    <th>평가/구매(원)</th>
                                     <th>추가기능</th>
                                 </tr>
                                 </thead>
@@ -98,7 +98,7 @@
                                     {% elif coin["currency"] == "KRW" %}
                                     <td style="text-align: center">
                                         <div style="display: flex;align-items: center;justify-content: center;gap: 1rem;margin-left: -.75rem;margin-right: -.75rem;">
-                                            <div>매도 금액 비율</div>
+                                            <div>매도</div>
                                             <div>
                                                 <select class="form-control" name="sellrate" id="sellrate">
                                                     <option value=1>100%</option>
@@ -109,7 +109,7 @@
                                                     <option value=100>1%</option>
                                                 </select>
                                             </div>
-                                            <div>매수 금액</div>
+                                            <div>매수</div>
                                             <div>
                                                 <input id="buyamt" name="buyamt" class="form-control" type="text"
                                                        value="10000" placeholder="10,000" max="2000000" min="10000"
