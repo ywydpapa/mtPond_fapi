@@ -39,8 +39,7 @@
             <div class="bg-white py-2 collapse-inner rounded">
                 <h6 class="collapse-header">관리 가능 목록</h6>
                 <a class="collapse-item" href="/balance/{{ user_No }}">나의 자산 현황</a>
-                <a class="collapse-item" href="/tradelogbook/{{ user_No }}">나의 투자결과 조회</a>
-                <a class="collapse-item" href="/tradecenter/{{user_No}}">직접 트레이딩</a>
+                <a class="collapse-item" href="/tradedetail/{{ user_No }}/{{ setkey }}">나의 투자결과 조회</a>
             </div>
         </div>
     </li>
@@ -55,9 +54,8 @@
              data-parent="#accordionSidebar">
             <div class="bg-white py-2 collapse-inner rounded">
                 <h6 class="collapse-header">설정 가능 목록</h6>
-                <a class="collapse-item" href="/initTrade/{{ user_No }}">거래설정 초기화</a>
                 <a class="collapse-item" href="/tradesetup/{{ user_No }}">거래설정</a>
-                <a class="collapse-item" href="/hotcoin_list/{{ user_No }}">시장 동향 (Hot 25)</a>
+                <a class="collapse-item" href="/tradetrend/{{ user_No }}/{{ setkey }}">거래 동향</a>
                 <a class="collapse-item" href="/tradesignal">거래자산 트렌드</a>
                 <a class="collapse-item" href="/predict_list/{{ user_No }}">가격변동 예측 상황</a>
             </div>

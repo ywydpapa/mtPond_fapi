@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% include '/comm/adheader.html' %}
+ <style>
+    #dataTable tr td {
+  height: 44px;
+  padding-top: 0;
+  padding-bottom: 0;
+  vertical-align: middle;
+  line-height: 1.2;
+}
+  .change-up {
+    color: #22c55e; /* 초록색 */
+    font-size: 1.2em;
+  }
+  .change-down {
+    color: #ef4444; /* 빨간색 */
+    font-size: 1.2em;
+  }
+  .change-even {
+    color: #64748b; /* 중립 회색 */
+    font-size: 1.2em;
+  }
+</style>
+
+</head>
+<body id="page-top">
+<!-- Page Wrapper -->
+<div id="wrapper">
+    {% include '/comm/sidebar.html' %}
+    <!-- Content Wrapper -->
+    <div id="content-wrapper" class="d-flex flex-column">
+        <!-- Main Content -->
+        <div id="content">
+            {% include '/comm/adtopbar.html' %}
+            <!-- Begin Page Content -->
+            <div class="container-fluid">
+                <!-- Page Heading -->
+                <!-- Page Heading -->
+                <!-- DataTales Example -->
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">나의 지갑 자산현황</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                                <thead>
+                                <tr style="text-align: center">
+                                    <th>자산명</th>
+                                    <th>잔고</th>
+                                    <th>거래중</th>
+                                    <th>평균매입가</th>
+                                    <th>현재가</th>
+                                    <th>변화</th>
+                                    <th>구매금액</th>
+                                    <th>평가금액</th>
+                                    <th>평가/구매(%)</th>
+                                    <th>평가/구매(원)</th>
+                                    <th>추가기능</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+
+                                <tr>
+                                    <td style="text-align: center" colspan="6">현재 원화 가치 합계</td>
+                                    <td id="wonsum" style="text-align: right"></td>
+                                    <td id="estsum" style="text-align: right"></td>
+                                    <td id="sumdiff" style="text-align: right"></td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- /.container-fluid -->
+        </div>
+        <!-- End of Main Content -->
+        <!-- Footer -->
+        <footer class="sticky-footer bg-white">
+            <div class="container my-auto">
+                <div class="copyright text-center my-auto">
+                    <span>Copyright &copy; Coredjk 2025</span>
+                </div>
+            </div>
+        </footer>
+        <!-- End of Footer -->
+    </div>
+    <!-- End of Content Wrapper -->
+</div>
+<!-- End of Page Wrapper -->
+<!-- Scroll to Top Button-->
+<a class="scroll-to-top rounded" href="#page-top">
+    <i class="fas fa-angle-up"></i>
+</a>
+<!-- Bootstrap core JavaScript-->
+
+{% include '/comm/adscript.html' %}
+
+<script>
+$(document).ready(function () {
+});
+
+const coins = [];
+{% for coin in mycoins %}
+    {% if coin["currency"] != "KRW" %}
+        coins.push("KRW-{{ coin['currency'] }}");
+    {% endif %}
+{% endfor %}
+
+const protocol = location.protocol === "https:" ? "wss" : "ws";
+const ws = new WebSocket(`${protocol}://${location.host}/ws/orderbook?coins=${coins.join(",")}`);
+
+ws.onmessage = function(event) {
+    const data = JSON.parse(event.data);
+    console.log("Orderbook:", data);
+};
+
+ws.onclose = function() {
+    console.log("WebSocket closed");
+};
+
+
+function safeParseFloat(val) {
+    if (typeof val === "undefined" || val === null) return 0;
+    let v = parseFloat(val.toString().replace(/,/g, ''));
+    return isNaN(v) ? 0 : v;
+}
+
+function numberWithCommas(x) {
+    x = x.toString();
+    var parts = x.split(".");
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    return parts.length > 1 ? parts[0] + "." + parts[1] : parts[0];
+}
+
+function numberNoneCommas(x) {
+    return x.toString().replace(/[\D\s\._\-]+/g, "");
+}
+
+</script>
+
+</body>
+</html>
