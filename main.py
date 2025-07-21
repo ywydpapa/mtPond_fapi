@@ -275,6 +275,22 @@ async def get_tradelogupbit(coink:str, userno:int, setkey:str, db: AsyncSession 
         print("거래이력 불러오기 에러",e)
         return False
 
+async def getsetups(uno:int, slotno:int, db: AsyncSession = Depends(get_db)):
+    try:
+        if slotno == 0:
+            sql = text("select * from traceSetup where userNo=:userno and attrib not like :xatts")
+            rows = await db.execute(sql, {"userno":uno, "xatts":'%XXXUP%'})
+            setups = list(rows.fetchall())
+            return setups
+        else:
+            sql = text("select * from traceSetup where userNo=:userno and slot = :slot and attrib not like :xattr")
+            rows = await db.execute(sql, {"userno":uno,"slot":slotno,"xattr":'%XXXUP%'} )
+            setups = list(rows.fetchall())
+            return setups
+    except Exception as e:
+        print('설정 불러오기 오류', e)
+        return False
+
 @app.get("/")
 async def root(request: Request):
     return templates.TemplateResponse("/login/login.html", {"request": request})
@@ -392,6 +408,35 @@ async def tradetrend(request:Request ,userno:int,setkey:str, db: AsyncSession = 
     userRole = request.session.get("user_Role")
     return templates.TemplateResponse('./trade/mytradingtrend.html', {"request": request,"trcoins": trcoins, "user_No":userno,"user_Name":userName, "user_Role":userRole ,"setkey":setkey, "mycoins" :mycoins})
 
+@app.get('/settletrend/{userno}/{setkey}')
+async def tradetrend(request:Request ,userno:int,setkey:str, db: AsyncSession = Depends(get_db)):
+    trcoins = await tradedcoins(userno, db)
+    mycoins = await checkwallet(userno, setkey, db)
+    userName = request.session.get("user_Name")
+    userRole = request.session.get("user_Role")
+    return templates.TemplateResponse('./trade/mysettletrend.html', {"request": request,"trcoins": trcoins, "user_No":userno,"user_Name":userName, "user_Role":userRole ,"setkey":setkey, "mycoins" :mycoins})
+
+@app.get('/rest_getwallet/{userno}/{setkey}')
+async def restgetwallet(request:Request ,userno:int,setkey:str,db: AsyncSession = Depends(get_db)):
+    try:
+        mycoins = await checkwallet(userno, setkey, db)
+        return JSONResponse({"success": True, "data": mycoins})
+    except Exception as e:
+        print("Error!!", e)
+        return JSONResponse({"success": False, "data": [] })
+
+@app.get('/mytradestat/{userno}/{setkey}/{slot}')
+async def mytradestat(request:Request ,userno:int,setkey:str,slot:int,user_session: int = Depends(require_login), db: AsyncSession = Depends(get_db)):
+    try:
+        setups = await getsetups(userno, slot, db)
+        userName = request.session.get("user_Name")
+        userRole = request.session.get("user_Role")
+        mycoins = await checkwallet(userno, setkey, db)
+        return templates.TemplateResponse('/trade/mytrademain.html', {"request":request, "setups":setups, "user_No":userno,"user_Name":userName, "user_Role":userRole ,"setkey":setkey, "mycoins" :mycoins, "slot":slot, "license":6 })
+    except Exception as e:
+        print("트레이딩 상태 불러오기 에러",e)
+
+
 @app.websocket("/ws/coinprice")
 async def coin_price_ws(websocket: WebSocket):
     await websocket.accept()
@@ -447,7 +492,6 @@ async def upbit_ws_orderbook_stream(markets: list):
                         "orderbook_units": orderbook_units
                     }
 
-
 @app.websocket("/ws/orderbook")
 async def coin_orderbook_ws(websocket: WebSocket):
     await websocket.accept()
@@ -456,6 +500,51 @@ async def coin_orderbook_ws(websocket: WebSocket):
     try:
         async for ob_data in upbit_ws_orderbook_stream(coin_list):
             await websocket.send_json(ob_data)
+    except WebSocketDisconnect:
+        print(f"WebSocket disconnected: coins {coin_list}")
+    except Exception as e:
+        print("WebSocket Error:", e)
+
+async def upbit_ws_trade_stream(markets: list):
+    uri = "wss://api.upbit.com/websocket/v1"
+    subscribe_data = [{
+        "ticket": "test",
+    }, {
+        "type": "trade",
+        "codes": markets,
+        "isOnlyRealtime": True
+    }]
+    async with websockets.connect(uri, ping_interval=60) as websocket:
+        await websocket.send(json.dumps(subscribe_data))
+        while True:
+            data = await websocket.recv()
+            parsed = json.loads(data)
+            # trade 타입만 처리
+            if parsed.get("type") == "trade":
+                market = parsed.get("code")
+                trade_price = parsed.get("trade_price")
+                trade_volume = parsed.get("trade_volume")
+                ask_bid = parsed.get("ask_bid")  # "BID"(매수), "ASK"(매도)
+                trade_time = parsed.get("trade_time")
+                trade_timestamp = parsed.get("trade_timestamp")
+                if market and trade_price and trade_volume:
+                    yield {
+                        "market": market,
+                        "trade_price": trade_price,
+                        "trade_volume": trade_volume,
+                        "ask_bid": ask_bid,
+                        "trade_time": trade_time,
+                        "trade_timestamp": trade_timestamp
+                    }
+
+@app.websocket("/ws/trade")
+async def coin_trade_ws(websocket: WebSocket):
+    await websocket.accept()
+    coins = websocket.query_params.get("coins", "")
+    coin_list = coins.split(",") if coins else []
+    try:
+        async for trade_data in upbit_ws_trade_stream(coin_list):
+            await websocket.send_json(trade_data)
     except WebSocketDisconnect:
         print(f"WebSocket disconnected: coins {coin_list}")
     except Exception as e:

@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="euc-kr">
+<head>
+    {% include '/comm/adheader.html' %}
+<body id="page-top">
+<!-- Page Wrapper -->
+<div id="wrapper">
+    {% include '/comm/sidebar.html' %}
+    <!-- Content Wrapper -->
+    <div id="content-wrapper" class="d-flex flex-column">
+        <!-- Main Content -->
+        <div id="content">
+            {% include '/comm/adtopbar.html' %}
+            <!-- Begin Page Content -->
+            <div class="container-fluid">
+                <!-- Page Heading -->
+                <ul class="nav  nav-pills">
+                    {% if license >= 3 %}
+                        <li class="nav-item">
+                            <a class="nav-link {% if slot == 1 %}active{% endif %}"
+                               href="/mytradestat/{{ user_No }}/{{ setkey }}/1">SLOT 01</a>
+                        </li>
+                    {% endif %}
+                    {% if license >= 6 %}
+                        <li class="nav-item">
+                            <a class="nav-link {% if slot == 2 %}active{% endif %}"
+                               href="/mytradestat/{{ user_No }}/{{ setkey }}/2">SLOT 02</a>
+                        </li>
+                    {% endif %}
+                    {% if license >= 9 %}
+                        <li class="nav-item">
+                            <a class="nav-link {% if slot == 3 %}active{% endif %}"
+                               href="/mytradestat/{{ user_No }}/{{ setkey }}/3">SLOT 03</a>
+                        </li>
+                    {% endif %}
+                    {% if license >= 12 %}
+                        <li class="nav-item">
+                            <a class="nav-link {% if slot == 4 %}active{% endif %}"
+                               href="/mytradestat/{{ user_No }}/{{ setkey }}/4">SLOT 04</a>
+                        </li>
+                    {% endif %}
+                    {% if license >= 15 %}
+                        <li class="nav-item">
+                            <a class="nav-link {% if slot == 5 %}active{% endif %}"
+                               href="/mytradestat/{{ user_No }}/{{ setkey }}/5">SLOT 05</a>
+                        </li>
+                    {% endif %}
+                </ul>
+                <div class="row">
+                    <div class="col-lg-4">
+                        <div class="card ">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">설정내용 1 <a
+                                        href="/editSetup?setno={{ setups[0][0] }}&coinA={{ setups[1][6] }}&coinB={{ setups[2][6] }}&tabindex={{ tabindex }}">
+                                    [수정] </a></h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered" id="dataTable1" width="100%" cellspacing="0">
+                                        <tbody>
+                                        <tr>
+                                            <td style="text-align: center">설정 코인</td>
+                                            <td style="text-align: center"><a
+                                                    href="https://upbit.com/exchange?code=CRIX.UPBIT.{{ setups[0][6] }}">{{ setups[0][6] }}</a>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align: center">시작금액</td>
+                                            <td id="initamount" style="text-align: right"></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align: center">최대금액</td>
+                                            <td id="limitamt1"
+                                                style="text-align: right;{% if setups[0][13] == 'Y' %}color:red{% endif %}"></td>
+                                        </tr>
+                                        <tr style="display: none">
+                                            <td style="text-align: center">추가매수설정</td>
+                                            <td style="text-align: right">{{ setups[0][12] }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align: center">거래설정</td>
+                                            <td style="text-align: right"></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align: center">손절설정</td>
+                                            <td class="align-items-center">
+                                            <div class="d-flex align-items-center gap-12 justify-content-center">
+                                                <div class="custom-control custom-switch">
+                                                    <input class="custom-control-input" type="checkbox" id="chklc1" name="chklc1"/>
+                                                    <label class="custom-control-label" for="chklc1">  </label>
+                                                </div>
+                                                    <input class="form-control-sm" style="text-align: right; border: #717384" type="number" name="lcrate1" id="lcrate1" value="{{ lcrate1 }}" max = "-1.5" min = "-10" step = "0.1">
+                                                    <label class="form-control-sm" for="lcrate1" style="margin-bottom:0"> % </label>
+                                                    <input type="checkbox" name="atstop1" id="atstop1" {% if setups[0][12] == 'Y'%}checked{% endif %}><label for="atstop1" style="margin-bottom:0"> 손절 후 자동OFF</label>
+                                            </div>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align: center">동작상태</td>
+                                            <td style="text-align:center">
+                                                <div class="custom-control custom-switch">
+                                                    <h4><input style="zoom: 150%" type="checkbox"
+                                                               class="custom-control-input" id="chk1" name="chk1"
+                                                               {% if setups[0][7]=='Y' %}checked{% endif %}/>
+                                                        <label class="custom-control-label" for="chk1">on/off</label>
+                                                    </h4>
+                                                </div>
+                                                <div class="custom-control custom-switch" style="display: none">
+                                                    <h4><input style="zoom: 150%" type="checkbox"
+                                                               class="custom-control-input" id="chk2" name="chk2"
+                                                               {% if setups[0][10]=='Y' %}checked{% endif %}
+                                                               {% if setups[0][10]=='N' %} disabled{% endif %}/>
+                                                        <label class="custom-control-label" for="chk2">hold</label></h4>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="card ">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">설정내용 2 <a
+                                        href="/editSetup?setno={{ setups[1][0] }}&coinA={{ setups[0][6] }}&coinB={{ setups[2][6] }}&tabindex={{ tabindex }}">
+                                    [수정] </a></h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered" id="dataTable2" width="100%" cellspacing="0">
+                                        <tbody>
+                                        <tr>
+                                            <td style="text-align: center">설정 코인</td>
+                                            <td style="text-align: center"><a
+                                                    href="https://upbit.com/exchange?code=CRIX.UPBIT.{{ setups[1][6] }}">{{ setups[1][6] }}</a>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align: center">시작금액</td>
+                                            <td id="initamount2" style="text-align: right"></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align: center">최대금액</td>
+                                            <td id="limitamt2"
+                                                style="text-align: right;{% if setups[1][13] == 'Y' %}color:red{% endif %}"></td>
+                                        </tr>
+                                        <tr style="display: none">
+                                            <td style="text-align: center">추가매수설정</td>
+                                            <td style="text-align: right">{{ setups[1][12] }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align: center">거래설정</td>
+                                            <td style="text-align: right"></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align: center">손절설정</td>
+                                            <td class="align-items-center">
+                                            <div class="d-flex align-items-center gap-12 justify-content-center">
+                                                <div class="custom-control custom-switch">
+                                                    <input class="custom-control-input" type="checkbox" id="chklc2" name="chklc2"/>
+                                                    <label class="custom-control-label" for="chklc2">  </label>
+                                                </div>
+                                                    <input class="form-control-sm" style="text-align: right; border: #717384" type="number" name="lcrate2" id="lcrate2" value="{{ lcrate2 }}" max = "-1.5" min = "-10" step = "0.1">
+                                                    <label class="form-control-sm" for="lcrate2" style="margin-bottom:0"> %    </label>
+                                                    <input type="checkbox" name="atstop2" id="atstop2" {% if setups[1][12] == 'Y'%}checked{% endif %}><label for="atstop2" style="margin-bottom:0"> 손절 후 자동OFF</label>
+                                            </div>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align: center">동작상태</td>
+                                            <td style="text-align:center">
+                                                <div class="custom-control custom-switch">
+                                                    <h4><input style="zoom: 150%" type="checkbox"
+                                                               class="custom-control-input" id="chk3" name="chk3"
+                                                               {% if setups[1][7]=='Y' %}checked{% endif %}/>
+                                                        <label class="custom-control-label" for="chk3">on/off</label>
+                                                    </h4>
+                                                </div>
+                                                <div class="custom-control custom-switch" style="display: none">
+                                                    <h4><input style="zoom: 150%" type="checkbox"
+                                                               class="custom-control-input" id="chk4" name="chk4"
+                                                               {% if setups[1][10]=='Y' %}checked{% endif %}
+                                                               {% if setups[1][10]=='N' %} disabled{% endif %}/>
+                                                        <label class="custom-control-label" for="chk4">hold</label></h4>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="card ">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">설정내용 3 <a
+                                        href="/editSetup?setno={{ setups[2][0] }}&coinA={{ setups[0][6] }}&coinB={{ setups[1][6] }}&tabindex={{ tabindex }}">
+                                    [수정] </a></h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered" id="dataTable3" width="100%" cellspacing="0">
+                                        <tbody>
+                                        <tr>
+                                            <td style="text-align: center">설정 코인</td>
+                                            <td style="text-align: center"><a
+                                                    href="https://upbit.com/exchange?code=CRIX.UPBIT.{{ setups[2][6] }}">{{ setups[2][6] }}</a>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align: center">시작금액</td>
+                                            <td id="initamount3" style="text-align: right"></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align: center">최대금액</td>
+                                            <td id="limitamt3"
+                                                style="text-align: right;{% if setups[2][13] == 'Y' %}color:red{% endif %}"></td>
+                                        </tr>
+                                        <tr style="display: none">
+                                            <td style="text-align: center">추가매수설정</td>
+                                            <td style="text-align: right">{{ setups[2][12] }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align: center">거래설정</td>
+                                            <td style="text-align: right"></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align: center">손절설정</td>
+                                            <td class="align-items-center">
+                                            <div class="d-flex align-items-center gap-12 justify-content-center">
+                                                <div class="custom-control custom-switch">
+                                                    <input class="custom-control-input" type="checkbox" id="chklc3" name="chklc3"/>
+                                                    <label class="custom-control-label" for="chklc3">  </label>
+                                                </div>
+                                                    <input class="form-control-sm" style="text-align: right; border: #717384" type="number" name="lcrate3" id="lcrate3" value="{{ lcrate3 }}" max = "-1.5" min = "-10" step = "0.1">
+                                                    <label class="form-control-sm" for="lcrate3" style="margin-bottom:0"> % </label>
+                                                    <input type="checkbox" name="atstop3" id="atstop3" {% if setups[2][12] == 'Y'%}checked{% endif %}><label for="atstop3" style="margin-bottom:0"> 손절 후 자동OFF</label>
+                                            </div>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align: center">동작상태</td>
+                                            <td style="text-align:center">
+                                                <div class="custom-control custom-switch">
+                                                    <h4><input style="zoom: 150%" type="checkbox"
+                                                               class="custom-control-input" id="chk5" name="chk5"
+                                                               {% if setups[2][7]=='Y' %}checked{% endif %}/>
+                                                        <label class="custom-control-label" for="chk5">on/off</label>
+                                                    </h4>
+                                                </div>
+                                                <div class="custom-control custom-switch" style="display: none">
+                                                    <h4><input style="zoom: 150%" type="checkbox"
+                                                               class="custom-control-input" id="chk6" name="chk6"
+                                                               {% if setups[2][10]=='Y' %}checked{% endif %}
+                                                               {% if setups[2][10]=='N' %} disabled{% endif %}/>
+                                                        <label class="custom-control-label" for="chk6">hold</label></h4>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <br>
+                    <div class="col-lg-4">
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">코인트렌드</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="card-body">
+                                    <div class="chart-area">
+                                        <canvas id="myChart1" width="100%"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-footer">
+                                현재 가격:
+                                구매가 대비 비율 %
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">코인트렌드</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="card-body">
+                                    <div class="chart-area">
+                                        <canvas id="myChart2" width="100%"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-footer">
+                                현재 가격
+                                구매가 대비 비율 %
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">코인트렌드</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="card-body">
+                                    <div class="chart-area">
+                                        <canvas id="myChart3" width="100%"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-footer">
+                                현재 가격
+                                구매가 대비 비율 %
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- DataTales Example -->
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">거래현황</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered" id="tradestat" name="tradestat" width="100%"
+                                   cellspacing="0">
+                                <thead>
+                                <tr style="text-align: center;vertical-align: middle">
+                                    <th>거래일시</th>
+                                    <th>코인명</th>
+                                    <th>거래종류</th>
+                                    <th>거래상태</th>
+                                    <th>주문가격</th>
+                                    <th>주문수량</th>
+                                    <th>주문금액</th>
+                                    <th>미체결량</th>
+                                    <th>예상수수료</th>
+                                    <th>코인 관리</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- /.container-fluid -->
+        </div>
+        <!-- End of Main Content -->
+        <!-- Footer -->
+        <footer class="sticky-footer bg-white">
+            <div class="container my-auto">
+                <div class="copyright text-center my-auto">
+                    <span>Copyright &copy; Coredjk 2025</span>
+                </div>
+            </div>
+        </footer>
+        <!-- End of Footer -->
+    </div>
+    <!-- End of Content Wrapper -->
+</div>
+<!-- End of Page Wrapper -->
+<!-- Scroll to Top Button-->
+<a class="scroll-to-top rounded" href="#page-top">
+    <i class="fas fa-angle-up"></i>
+</a>
+<!-- Bootstrap core JavaScript-->
+
+{% include '/comm/adscript.html' %}
+{% include './comm/adscriptchart.html' %}
+</body>
+<script>
+    $(document).ready(function () {
+
+    });
+
+    const coins = ['{{setups[0][6]}}','{{setups[1][6]}}','{{setups[2][6]}}'];
+
+    const protocol = location.protocol === "https:" ? "wss" : "ws";
+    const ws = new WebSocket(`${protocol}://${location.host}/ws/coinprice?coins=${coins.join(",")}`);
+
+
+
+
+    $("#chk1").change(function () {
+        var setno = {{ setups[0][0] }}
+        if ($('input[name="chk1"]').is(":checked") === true) {
+            setyn(setno, "Y");
+        } else {
+            setyn(setno, "N");
+        }
+    });
+
+    $("#chk3").change(function () {
+        var setno = {{ setups[1][0] }}
+        if ($('input[name="chk3"]').is(":checked") === true) {
+            setyn(setno, "Y");
+        } else {
+            setyn(setno, "N");
+        }
+    });
+
+    $("#chk5").change(function () {
+        var setno = {{ setups[2][0] }}
+        if ($('input[name="chk5"]').is(":checked") === true) {
+            setyn(setno, "Y");
+        } else {
+            setyn(setno, "N");
+        }
+    });
+
+    $("#chk2").change(function () {
+        var uno = {{ user_No }}
+        if ($('input[name="chk2"]').is(":checked") === true) {
+            sethr(uno, "Y");
+        } else {
+            sethr(uno, "N");
+        }
+    });
+
+    $("#chklc1").change(function () {
+        var sno = {{ setups[0][0] }}
+        var srate = $("#lcrate1").val();
+        if ($('input[name="chklc1"]').is(":checked") === true) {
+            setlc(sno,srate,1.0);
+        } else {
+            setlc(sno,srate,0);
+        }
+    });
+
+    $("#chklc2").change(function () {
+        var sno = {{ setups[1][0] }}
+        var srate = $("#lcrate2").val();
+        if ($('input[name="chklc2"]').is(":checked") === true) {
+            setlc(sno,srate,1.0);
+        } else {
+            setlc(sno,srate,0);
+        }
+    });
+
+    $("#chklc3").change(function () {
+        var sno = {{ setups[2][0] }}
+        var srate = $("#lcrate3").val();
+        if ($('input[name="chklc3"]').is(":checked") === true) {
+            setlc(sno,srate,1.0);
+        } else {
+            setlc(sno,srate,0);
+        }
+    });
+
+    $("#atstop1").change(function () {
+        var sno = {{ setups[0][0] }}
+        if ($('input[name="atstop1"]').is(":checked") === true) {
+            setautostop(sno,'Y');
+        } else {
+            setautostop(sno,'N');
+        }
+    });
+
+    $("#atstop2").change(function () {
+        var sno = {{ setups[1][0] }}
+        if ($('input[name="atstop2"]').is(":checked") === true) {
+            setautostop(sno,'Y');
+        } else {
+            setautostop(sno,'N');
+        }
+    });
+
+    $("#atstop3").change(function () {
+        var sno = {{ setups[2][0] }}
+        if ($('input[name="atstop3"]').is(":checked") === true) {
+            setautostop(sno,'Y');
+        } else {
+            setautostop(sno,'N');
+        }
+    });
+
+    function setyn(setno, yn) {
+        data = [setno, yn]
+        $.ajax({
+            type: "POST",
+            url: '/setyns',
+            data: data,
+            async: false,
+            processData: false,
+            contentType: false,
+            success: (res) => {
+                if (res == "OVER") {
+                    alert("10만원 이상의 자산이 지갑에 있습니다. \n 지갑 내 기존 코인 정리 후 트레이딩이 가능합니다.");
+                }
+                location.reload();
+            }
+        });
+    }
+
+    function sethr(uno, hr) {
+        data = [uno, hr]
+        $.ajax({
+            type: "POST",
+            url: '/sethr',
+            data: data,
+            processData: false,
+            contentType: false,
+            success: (res) => {
+                location.reload();
+            }
+        });
+    }
+
+    function setautostop(sno, yesno){
+        data = [sno, yesno]
+        $.ajax({
+            type: "POST",
+            url: '/setatstop',
+            data: data,
+            processData: false,
+            contentType: false,
+            success: (res) => {
+                location.reload();
+            }
+        });
+    }
+
+        function setlc(sno,rate,onoff) {
+        data = [sno, rate, onoff]
+        $.ajax({
+            type: "POST",
+            url: '/setlc',
+            data: data,
+            processData: false,
+            contentType: false,
+            success: (res) => {
+                location.reload();
+            }
+        });
+    }
+
+    function cancelorder(uno, uuid) {
+        if (confirm("본 거래를 취소 하시겠습니까?")) {
+            data = [uno, uuid]
+            console.log(data);
+            $.ajax({
+                type: "POST",
+                url: '/cancelOrder',
+                data: data,
+                processData: false,
+                contentType: false,
+                success: (res) => {
+                    console.log(res);
+                    location.reload();
+                }
+            });
+        } else {
+        }
+    }
+
+    function numberWithCommas(x) {
+        return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+
+    function numberNoneCommas(x) {
+        return x.toString().replace(/[\D\s\._\-]+/g, "");
+    }
+
+
+
+</script>
+</html>
+

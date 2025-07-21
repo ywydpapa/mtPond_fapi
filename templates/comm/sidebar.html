@@ -55,8 +55,8 @@
             <div class="bg-white py-2 collapse-inner rounded">
                 <h6 class="collapse-header">설정 가능 목록</h6>
                 <a class="collapse-item" href="/tradesetup/{{ user_No }}">거래설정</a>
-                <a class="collapse-item" href="/tradetrend/{{ user_No }}/{{ setkey }}">거래 동향</a>
-                <a class="collapse-item" href="/tradesignal">거래자산 트렌드</a>
+                <a class="collapse-item" href="/tradetrend/{{ user_No }}/{{ setkey }}">주문 동향</a>
+                <a class="collapse-item" href="/settletrend/{{ user_No }}/{{ setkey }}">체결 트렌드</a>
                 <a class="collapse-item" href="/predict_list/{{ user_No }}">가격변동 예측 상황</a>
             </div>
         </div>
@@ -71,9 +71,9 @@
 
     <!-- Nav Item - Charts -->
     <li class="nav-item">
-        <a class="nav-link" href="#">
+        <a class="nav-link" href="/mytradestat/{{ user_No }}/{{ setkey}}/1">
             <i class="fas fa-fw fa-chart-area"></i>
-            <span>공지사항 확인</span></a>
+            <span>트레이딩 상태확인</span></a>
     </li>
     <!-- Divider -->
     <hr class="sidebar-divider d-none d-md-block">
