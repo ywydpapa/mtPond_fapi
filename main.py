@@ -669,6 +669,16 @@ async def setupmybid(
     return RedirectResponse(url=f"/mytradestat/{uno}/{setkey}/{slot}", status_code=303)
 
 
+@app.get('/rest_getorder/{userno}/{setkey}/{slot}')
+async def restgetorder(request:Request ,userno:int,setkey:str,slot:int,db: AsyncSession = Depends(get_db)):
+    try:
+        orderlist = await get_orderlist(userno, setkey, slot, db)
+        return JSONResponse({"success": True, "data": orderlist})
+    except Exception as e:
+        print("Error!!", e)
+        return JSONResponse({"success": False, "data": [] })
+
+
 @app.post('/cancelOrder')
 async def cancelorder(request:Request,uno: int = Form(...), setkey: str = Form(...), uuid: str = Form(...),db: AsyncSession = Depends(get_db)):
     try:

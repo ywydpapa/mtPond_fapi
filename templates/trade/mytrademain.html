@@ -72,8 +72,8 @@
                                             <td style="text-align: center">현재가/(매수액/매도액)</td>
                                             <td> <div style="display: flex; width: 100%; text-align: right;">
                                                 <span id="curtrade1-price" style="flex: 1;"></span>
-                                                <span id="curtrade1-bid" style="flex: 1; border-left: 1px solid #eee; border-right: 1px solid #eee;"></span>
-                                                <span id="curtrade1-ask" style="flex: 1;"></span>
+                                                <span id="curtrade1-bid" style="flex: 1; border-left: 1px solid #eee; border-right: 1px solid #eee; color:green"></span>
+                                                <span id="curtrade1-ask" style="flex: 1; color: blue"></span>
                                                 </div>
                                             </td>
                                         </tr>
@@ -83,7 +83,18 @@
                                         </tr>
                                         <tr>
                                             <td style="text-align: center">거래설정</td>
-                                            <td style="text-align: right"></td>
+                                            <td style="text-align: right">
+                                                <div class="d-flex" style="gap: 1.5rem;">
+                                                    <div class="custom-control custom-switch flex-fill text-center">
+                                                        <input class="custom-control-input" type="checkbox" id="autochg1" name="autochg1"/>
+                                                        <label class="custom-control-label" for="autochg1">자동전환</label>
+                                                    </div>
+                                                    <div class="custom-control custom-switch flex-fill text-center">
+                                                        <input class="custom-control-input" type="checkbox" id="hotwtr1" name="hotwtr1"/>
+                                                        <label class="custom-control-label" for="hotwtr1">Hot Trace</label>
+                                                    </div>
+                                                </div>
+                                            </td>
                                         </tr>
                                         <tr>
                                             <td style="text-align: center">손절설정</td>
@@ -149,8 +160,8 @@
                                             <td style="text-align: center">현재가/(매수액/매도액)</td>
                                             <td> <div style="display: flex; width: 100%; text-align: right;">
                                                 <span id="curtrade2-price" style="flex: 1;"></span>
-                                                <span id="curtrade2-bid" style="flex: 1; border-left: 1px solid #eee; border-right: 1px solid #eee;"></span>
-                                                <span id="curtrade2-ask" style="flex: 1;"></span>
+                                                <span id="curtrade2-bid" style="flex: 1; border-left: 1px solid #eee; border-right: 1px solid #eee;color:green"></span>
+                                                <span id="curtrade2-ask" style="flex: 1;color:blue"></span>
                                                 </div>
                                             </td>
                                         </tr>
@@ -160,7 +171,18 @@
                                         </tr>
                                         <tr>
                                             <td style="text-align: center">거래설정</td>
-                                            <td style="text-align: right"></td>
+                                            <td style="text-align: right">
+                                                <div class="d-flex" style="gap: 1.5rem;">
+                                                    <div class="custom-control custom-switch flex-fill text-center">
+                                                        <input class="custom-control-input" type="checkbox" id="autochg2" name="autochg2"/>
+                                                        <label class="custom-control-label" for="autochg1">자동전환</label>
+                                                    </div>
+                                                    <div class="custom-control custom-switch flex-fill text-center">
+                                                        <input class="custom-control-input" type="checkbox" id="hotwtr2" name="hotwtr2"/>
+                                                        <label class="custom-control-label" for="hotwtr1">Hot Trace</label>
+                                                    </div>
+                                                </div>
+                                            </td>
                                         </tr>
                                         <tr>
                                             <td style="text-align: center">손절설정</td>
@@ -226,8 +248,8 @@
                                             <td style="text-align: center">현재가/(매수액/매도액)</td>
                                             <td> <div style="display: flex; width: 100%; text-align: right;">
                                                 <span id="curtrade3-price" style="flex: 1;"></span>
-                                                <span id="curtrade3-bid" style="flex: 1; border-left: 1px solid #eee; border-right: 1px solid #eee;"></span>
-                                                <span id="curtrade3-ask" style="flex: 1;"></span>
+                                                <span id="curtrade3-bid" style="flex: 1; border-left: 1px solid #eee; border-right: 1px solid #eee;color:green"></span>
+                                                <span id="curtrade3-ask" style="flex: 1;color:blue"></span>
                                                 </div>
                                             </td>
 
@@ -238,7 +260,18 @@
                                         </tr>
                                         <tr>
                                             <td style="text-align: center">거래설정</td>
-                                            <td style="text-align: right"></td>
+                                            <td style="text-align: right">
+                                                <div class="d-flex" style="gap: 1.5rem;">
+                                                    <div class="custom-control custom-switch flex-fill text-center">
+                                                        <input class="custom-control-input" type="checkbox" id="autochg3" name="autochg3"/>
+                                                        <label class="custom-control-label" for="autochg1">자동전환</label>
+                                                    </div>
+                                                    <div class="custom-control custom-switch flex-fill text-center">
+                                                        <input class="custom-control-input" type="checkbox" id="hotwtr3" name="hotwtr3"/>
+                                                        <label class="custom-control-label" for="hotwtr1">Hot Trace</label>
+                                                    </div>
+                                                </div>
+                                            </td>
                                         </tr>
                                         <tr>
                                             <td style="text-align: center">손절설정</td>
@@ -406,7 +439,7 @@
 </body>
 <script>
     $(document).ready(function () {
-
+        setInterval(fetchOrderListAndUpdate, 10000);
     });
 
     const coins = ['{{setups[0][6]}}','{{setups[1][6]}}','{{setups[2][6]}}'];
@@ -492,7 +525,7 @@ ws.onmessage = function(event) {
     currentPrices[market] = data.trade_price;
     if (recentTrades[market]) {
         recentTrades[market].push(data);
-        if (recentTrades[market].length > 10) {
+        if (recentTrades[market].length > 20) {
             recentTrades[market].shift();
         }
 
@@ -746,6 +779,58 @@ ws.onmessage = function(event) {
         }
     });
 }
+
+function fetchOrderListAndUpdate() {
+    $.ajax({
+        type: "GET",
+        url: `/rest_getorder/{{ user_No }}/{{ setkey }}/{{ slot }}`,
+        dataType: "json",
+        success: function(res) {
+            if (res.success) {
+                updateOrderTable(res.data);
+            }
+        }
+    });
+}
+
+function updateOrderTable(orderlist) {
+    let tbody = "";
+    orderlist.forEach(items => {
+        let created_at = items['created_at'].slice(0,10) + " " + items['created_at'].slice(11,19);
+        let market = items['market'];
+        let side = items['side'] === 'ask' ? '<span style="color: blue;">매도</span>' : '<span style="color: red;">매수</span>';
+        let price = parseFloat(items['price']);
+        let priceStr = price < 1 ? price.toFixed(6) : (price < 100 ? price.toFixed(2) : price.toFixed(0));
+        priceStr = numberWithCommas(priceStr);
+        let volume = items['volume'];
+        let ovalue = numberWithCommas((parseFloat(items['volume']) * parseFloat(items['price'])).toFixed(0));
+        let remaining = items['remaining_volume'];
+        let fee = numberWithCommas((parseFloat(items['volume']) * parseFloat(items['price']) * 0.0005).toFixed(0));
+        let row = `
+        <tr>
+            <td style="text-align: center">${created_at}</td>
+            <td style="text-align: center">${market}</td>
+            <td style="text-align: center">${side}</td>
+            <td style="text-align: center" class="cudiff"></td>
+            <td style="text-align: right" class="oprice">${priceStr}</td>
+            <td style="text-align: right" class="ovol">${volume}</td>
+            <td style="text-align: right" class="ovalue">${ovalue}</td>
+            <td style="text-align: right">${remaining}</td>
+            <td style="text-align: right">${fee}</td>
+            <td>
+                <button class="btn form-control btn-primary"
+                    onclick="cancelorder({{ user_No }}, {{ setkey }},'${items["uuid"]}')">
+                    거래 취소
+                </button>
+            </td>
+        </tr>
+        `;
+        tbody += row;
+    });
+    $("#tradestat tbody").html(tbody);
+    updateCudiff(); // 가격 차이(%) 업데이트
+}
+
 
 </script>
 </html>
