@@ -26,6 +26,7 @@ import websockets
 import json
 from sqlalchemy import text
 from pandas import DataFrame
+from typing import Optional
 
 
 dotenv.load_dotenv()
@@ -85,7 +86,7 @@ async def selectUsers(uid:str, upw:str,  db: AsyncSession = Depends(get_db)):
     row = None
     setkey = None
     try:
-        sql = text("SELECT userNo, userName, serverNo, userRole FROM traceUser WHERE userPasswd=password(:passwd) AND userId=:userid AND attrib NOT LIKE :xattr")
+        sql = text("SELECT userNo, userName, serverNo, userRole, tradeCnt FROM traceUser WHERE userPasswd=password(:passwd) AND userId=:userid AND attrib NOT LIKE :xattr")
         result = await db.execute(sql,{"passwd":upw,"userid":uid,"xattr":"%XXXUP%"})
         row = result.fetchone()
         if row is not None:
@@ -331,6 +332,50 @@ async def setlconoff(setno:int, srate:float, yesno:float, db: AsyncSession = Dep
     except Exception as e:
         print('손절 ONOFF 오류', e)
 
+async def selectsetlist(db: AsyncSession = Depends(get_db)):
+    try:
+        sql = text("SELECT * FROM traceSets WHERE useYN = :useyn and attrib NOT LIKE :xattr")
+        rows = await db.execute(sql, {"useyn":"Y","xattr":"%XXXUP%"} )
+        sets = rows.fetchall()
+        return sets
+    except Exception as e:
+        print('트레이딩 설정 목록 불러오기 오류', e)
+
+async def erasebid(uno:int, setkey:str, tabindex:int, db: AsyncSession = Depends(get_db)):
+    try:
+        if setkey == None:
+            return False
+        else:
+            sql2 = text("update traceSetup set attrib=:xattr where userNo=:userno and slot = :slot")
+            await db.execute(sql2, {"xattr":"XXXUPXXXUPXXXUP", "userno":uno,"slot": tabindex})
+            await db.commit()
+            return True
+    except Exception as e:
+        return False
+
+async def setupbid(uno, setkey, initbid, bidstep, bidrate, askrate, coinn, svrno, tradeset, holdNo, doubleYN, limitamt,limityn, slot, db: AsyncSession = Depends(get_db)):
+    chkkey = await check_setkey(uno, setkey, db)
+    if chkkey is True:
+        try:
+            sql = text("""
+                insert into traceSetup 
+                (userNo, initAsset, bidInterval, bidRate, askrate, bidCoin, custKey, serverNo, holdNo, doubleYN, limitAmt, limitYN, slot, regDate)
+                VALUES (:uno, :initbid, :bidstep, :bidrate, :askrate, :coinn, :tradeset, :svrno, :holdNo, :doubleYN, :limitamt, :limityn, :slot, now())
+            """)
+            await db.execute(sql, {
+                "uno": uno,"initbid": initbid,"bidstep": bidstep,
+                "bidrate": bidrate,"askrate": askrate,"coinn": coinn,
+                "tradeset": tradeset,"svrno": svrno,"holdNo": holdNo,
+                "doubleYN": doubleYN,"limitamt": limitamt,"limityn": limityn, "slot": slot,
+            })
+            await db.commit()
+            return True
+        except Exception as e:
+            print('트레이딩 설정 저장 오류', e)
+            return False
+    else:
+        return False
+
 @app.get("/")
 async def root(request: Request):
     return templates.TemplateResponse("/login/login.html", {"request": request})
@@ -347,8 +392,9 @@ async def login(request: Request, response: Response, uid: str = Form(...), upw:
     # 서버 세션에 사용자 ID 저장
     request.session["user_No"] = user[0][0]
     request.session["user_Name"] = user[0][1]
-    request.session["server_no"] = user[0][2]
+    request.session["server_No"] = user[0][2]
     request.session["user_Role"] = user[0][3]
+    request.session["License"] = user[0][4]
     request.session["setKey"] = user[1]
     return RedirectResponse(url=f"/balance/{user[0][0]}", status_code=303)
 
@@ -369,13 +415,14 @@ async def my_balance(request: Request, uno: int, user_session: int = Depends(req
         setKey = request.session.get("setKey")
         userName = request.session.get("user_Name")
         userRole = request.session.get("user_Role")
+        userLicense = request.session.get("License")
         mycoins = await checkwallet(uno,setKey, db)
         cprices = await get_current_prices()
     except Exception as e:
         print("Get Balances Error !!", e)
         mycoins = None
     return templates.TemplateResponse("wallet/mywallet.html",
-                                      {"request": request, "user_No": uno,"user_Name":userName, "user_Role":userRole, "setkey":setKey,"mycoins": mycoins, "myavgp":myavgp, "cuprices":cprices})
+                                      {"request": request, "user_No": uno,"user_Name":userName, "user_Role":userRole, "setkey":setKey,"license":userLicense ,"mycoins": mycoins, "myavgp":myavgp, "cuprices":cprices})
 
 @app.post("/tradebuymarket/{uno}/{setkey}/{coinn}/{costk}")
 async def tradebuymarket(request: Request,uno: int,setkey:str, coinn: str, costk: float, user_session: int = Depends(require_login), db: AsyncSession = Depends(get_db)):
@@ -471,11 +518,66 @@ async def mytradestat(request:Request ,userno:int,setkey:str,slot:int,user_sessi
         setups = await getsetups(userno, slot, db)
         userName = request.session.get("user_Name")
         userRole = request.session.get("user_Role")
+        userLicense = request.session.get("License")
         mycoins = await checkwallet(userno, setkey, db)
         orderlist = await get_orderlist(userno, setkey, slot, db)
-        return templates.TemplateResponse('/trade/mytrademain.html', {"request":request, "setups":setups, "user_No":userno,"user_Name":userName, "user_Role":userRole ,"setkey":setkey, "mycoins" :mycoins, "slot":slot, "license":6, "orderlist":orderlist })
+        return templates.TemplateResponse('/trade/mytrademain.html', {"request":request, "setups":setups, "user_No":userno,"user_Name":userName, "user_Role":userRole ,"setkey":setkey,"license":userLicense,"mycoins" :mycoins, "slot":slot, "orderlist":orderlist })
     except Exception as e:
         print("트레이딩 상태 불러오기 에러",e)
+
+@app.get('/mytradeSet/{userno}')
+async def mytradeSet(request:Request,userno:int,db: AsyncSession = Depends(get_db)):
+    coinlist = pyupbit.get_tickers(fiat="KRW")
+    userName = request.session.get("user_Name")
+    userRole = request.session.get("user_Role")
+    trcnt = request.session.get("License")
+    serverno = request.session.get("server_No")
+    setlist = await selectsetlist(db)
+    return templates.TemplateResponse('/trade/setmytrades.html', {"request":request,"coinlist":coinlist, "setlist":setlist, "trcnt":trcnt,"user_Name":userName, "user_Role":userRole, "server_No":serverno })
+
+@app.post("/setupbid")
+async def setupmybid(
+    userno: str = Form(...),
+    tabindex: str = Form(...),
+    initprice: str = Form(...),
+    lcrate: Optional[str] = Form(None),
+    lcchk: Optional[str] = Form(None),
+    tradeset: str = Form(...),
+    coinn1: Optional[str] = Form(None),
+    coinn2: Optional[str] = Form(None),
+    coinn3: Optional[str] = Form(None),
+    skey: str = Form(...),
+    svrno: str = Form(...),
+    limityn: Optional[str] = Form(None),
+    limitamt: Optional[str] = Form(None),
+        db: AsyncSession = Depends(get_db),
+):
+    uno = userno
+    slot = tabindex
+    price = initprice.replace(',', '') if initprice else ''
+    askrate = lcrate
+    lcchk_val = lcchk
+    tradeset_split = tradeset.split(',')
+    tradeset_val = tradeset_split[0]
+    bidsetps = tradeset_split[1] if len(tradeset_split) > 1 else None
+    hno = tradeset_split[1] if len(tradeset_split) > 1 else None
+    dyn = 'Y' if limityn == 'on' else 'N'
+    limityn_value = 'Y' if limityn == 'on' else 'N'
+    lmtamt = (limitamt or '').replace(',', '') if limitamt else ''
+    bidrate = 1.0 if lcchk_val == 'on' else 0.0
+
+    await erasebid(uno, skey, slot)
+
+    for coin in [coinn1, coinn2, coinn3]:
+        if coin:
+            await setupbid(
+                uno, skey, price, bidsetps, bidrate, askrate, coin, svrno,
+                tradeset_val, hno, dyn, lmtamt, limityn_value, slot, db
+            )
+
+    return RedirectResponse(url=f"/trade?uno={uno}&skey={skey}&tabindex={slot}", status_code=303)
+
+
 
 @app.post('/cancelOrder')
 async def cancelorder(request:Request,uno: int = Form(...), setkey: str = Form(...), uuid: str = Form(...),db: AsyncSession = Depends(get_db)):
@@ -496,12 +598,12 @@ async def setyns(request:Request,setno: int = Form(...), yn: str = Form(...),db:
         return JSONResponse({"success": False, "data": yn})
 
 @app.post('/setautostop')
-async def setatstop(request:Request,sno: int = Form(...), yn: str = Form(...),db: AsyncSession = Depends(get_db)):
+async def setatstop(request:Request,sno: int = Form(...), yesno: str = Form(...),db: AsyncSession = Depends(get_db)):
     try:
-        await setautostop(sno, yn)
-        return JSONResponse({"success": True, "data": yn})
+        await setautostop(sno, yesno, db)
+        return JSONResponse({"success": True, "data": yesno})
     except Exception as e:
-        return JSONResponse({"success": False, "data": yn})
+        return JSONResponse({"success": False, "data": yesno})
 
 @app.post('/setlosscut')
 async def setlosscut(request:Request,sno: int = Form(...), rate: float = Form(...), onoff: float = Form(...), db: AsyncSession = Depends(get_db)):
