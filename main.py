@@ -275,6 +275,22 @@ async def get_tradelogupbit(coink:str, userno:int, setkey:str, db: AsyncSession 
         print("거래이력 불러오기 에러",e)
         return False
 
+async def get_orderlist(userno:int, setkey:str,slot:int, db: AsyncSession = Depends(get_db)):
+    global rows
+    try:
+        keys = await getKeys(userno,setkey,db)
+        upbit = pyupbit.Upbit(keys[0], keys[1])
+        setups = await getsetups(userno, slot, db)
+        orders = []
+        for setup in setups:
+            coink = setup[6]
+            order = upbit.get_order(coink)
+            orders.extend(order)
+        return orders
+    except Exception as e:
+        print("주문내용 불러오기 에러",e)
+        return False
+
 async def getsetups(uno:int, slotno:int, db: AsyncSession = Depends(get_db)):
     try:
         if slotno == 0:
@@ -432,7 +448,8 @@ async def mytradestat(request:Request ,userno:int,setkey:str,slot:int,user_sessi
         userName = request.session.get("user_Name")
         userRole = request.session.get("user_Role")
         mycoins = await checkwallet(userno, setkey, db)
-        return templates.TemplateResponse('/trade/mytrademain.html', {"request":request, "setups":setups, "user_No":userno,"user_Name":userName, "user_Role":userRole ,"setkey":setkey, "mycoins" :mycoins, "slot":slot, "license":6 })
+        orderlist = await get_orderlist(userno, setkey, slot, db)
+        return templates.TemplateResponse('/trade/mytrademain.html', {"request":request, "setups":setups, "user_No":userno,"user_Name":userName, "user_Role":userRole ,"setkey":setkey, "mycoins" :mycoins, "slot":slot, "license":6, "orderlist":orderlist })
     except Exception as e:
         print("트레이딩 상태 불러오기 에러",e)
 
