@@ -7,7 +7,7 @@ import time
 from typing import Dict
 import math
 import aiohttp
-from fastapi import FastAPI, Depends, Request, Form, Response, HTTPException, status, File, UploadFile
+from fastapi import FastAPI, Depends, Request, Form, Response, HTTPException, status, File, UploadFile, Query
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
@@ -343,17 +343,14 @@ async def selectsetlist(db: AsyncSession = Depends(get_db)):
 
 async def erasebid(uno:int, setkey:str, tabindex:int, db: AsyncSession = Depends(get_db)):
     try:
-        if setkey == None:
-            return False
-        else:
-            sql2 = text("update traceSetup set attrib=:xattr where userNo=:userno and slot = :slot")
-            await db.execute(sql2, {"xattr":"XXXUPXXXUPXXXUP", "userno":uno,"slot": tabindex})
-            await db.commit()
-            return True
+        sql2 = text("update traceSetup set attrib=:xattr where userNo=:userno and slot = :slot")
+        await db.execute(sql2, {"xattr":"XXXUPXXXUPXXXUP", "userno":uno,"slot": tabindex})
+        await db.commit()
+        return True
     except Exception as e:
         return False
 
-async def setupbid(uno, setkey, initbid, bidstep, bidrate, askrate, coinn, svrno, tradeset, holdNo, doubleYN, limitamt,limityn, slot, db: AsyncSession = Depends(get_db)):
+async def setupbid(uno:int, setkey:str, initbid:float, bidstep:int, bidrate:float, askrate:float, coinn:str, svrno:int, tradeset:int, holdNo:int, doubleYN:str, limitamt:float,limityn:str, slot:int, db: AsyncSession = Depends(get_db)):
     chkkey = await check_setkey(uno, setkey, db)
     if chkkey is True:
         try:
@@ -376,6 +373,32 @@ async def setupbid(uno, setkey, initbid, bidstep, bidrate, askrate, coinn, svrno
     else:
         return False
 
+async def editbidsetup( sno:int, uno:int, setkey:str, initbid:float, bidstep:int, bidrate:float, askrate:float, coinn:str, svrno:int, tradeset:int, holdNo:int, doubleYN:str, limitamt:float,limityn:str, slot:int, db: AsyncSession = Depends(get_db)):
+    chkkey = await check_setkey(uno, setkey, db)
+    if chkkey == True:
+        try:
+            sqlp = text("update traceSetup set attrib=:xattr where setupNo=:sno")
+            await db.execute(sqlp, {"sno":sno,"xattr":"XXXUPXXXUPXXXUP"})
+            await db.commit()
+            sql = text("""
+                       insert into traceSetup
+                       (userNo, initAsset, bidInterval, bidRate, askrate, bidCoin, custKey, serverNo, holdNo, doubleYN,
+                        limitAmt, limitYN, slot, regDate)
+                       VALUES (:uno, :initbid, :bidstep, :bidrate, :askrate, :coinn, :tradeset, :svrno, :holdNo,
+                               :doubleYN, :limitamt, :limityn, :slot, now())
+                       """)
+            await db.execute(sql, {
+                "uno": uno, "initbid": initbid, "bidstep": bidstep,
+                "bidrate": bidrate, "askrate": askrate, "coinn": coinn,
+                "tradeset": tradeset, "svrno": svrno, "holdNo": holdNo,
+                "doubleYN": doubleYN, "limitamt": limitamt, "limityn": limityn, "slot": slot,
+            })
+            await db.commit()
+            return True
+        except Exception as e:
+            print('접속오류', e)
+    else:
+        return False
 @app.get("/")
 async def root(request: Request):
     return templates.TemplateResponse("/login/login.html", {"request": request})
@@ -530,13 +553,47 @@ async def mytradeSet(request:Request,userno:int,db: AsyncSession = Depends(get_d
     coinlist = pyupbit.get_tickers(fiat="KRW")
     userName = request.session.get("user_Name")
     userRole = request.session.get("user_Role")
+    setkey = request.session.get("setKey")
     trcnt = request.session.get("License")
     serverno = request.session.get("server_No")
     setlist = await selectsetlist(db)
-    return templates.TemplateResponse('/trade/setmytrades.html', {"request":request,"coinlist":coinlist, "setlist":setlist, "trcnt":trcnt,"user_Name":userName, "user_Role":userRole, "server_No":serverno })
+    return templates.TemplateResponse('/trade/setmytrades.html', {"request":request,"coinlist":coinlist, "setlist":setlist, "trcnt":trcnt,"user_Name":userName,"setkey":setkey,"user_No":userno, "user_Role":userRole, "server_No":serverno })
 
-@app.post("/setupbid")
-async def setupmybid(
+@app.get('/editSetup')
+async def editSetup(request:Request,
+    setno: str = Query(...),
+    coinA: str = Query(...),
+    coinB: str = Query(...),
+    tabindex: str = Query(...),
+    db: AsyncSession = Depends(get_db)
+):
+    coinlist = pyupbit.get_tickers(fiat="KRW")
+    setlist = await selectsetlist(db)
+    setkey = request.session.get("setKey")
+    userno = request.session.get("user_No")
+    serverno = request.session.get("server_No")
+    usernameno = request.session.get("user_Name")
+    userrole = request.session.get("user_Role")
+    return templates.TemplateResponse(
+        './trade/editmytrade.html',
+        {
+            "request": request,
+            "coinlist": coinlist,
+            "setno": setno,
+            "coinA": coinA,
+            "coinB": coinB,
+            "setlist": setlist,
+            "tabindex": tabindex,
+            "setkey": setkey,
+            "user_No": userno,
+            "user_Name": usernameno,
+            "user_Role": userrole,
+            "server_No": serverno,
+        }
+    )
+
+@app.post("/setupbids")
+async def setupmybids(
     userno: str = Form(...),
     tabindex: str = Form(...),
     initprice: str = Form(...),
@@ -546,14 +603,14 @@ async def setupmybid(
     coinn1: Optional[str] = Form(None),
     coinn2: Optional[str] = Form(None),
     coinn3: Optional[str] = Form(None),
-    skey: str = Form(...),
+    setkey: str = Form(...),
     svrno: str = Form(...),
     limityn: Optional[str] = Form(None),
     limitamt: Optional[str] = Form(None),
         db: AsyncSession = Depends(get_db),
 ):
-    uno = userno
-    slot = tabindex
+    uno = int(userno)
+    slot = int(tabindex)
     price = initprice.replace(',', '') if initprice else ''
     askrate = lcrate
     lcchk_val = lcchk
@@ -565,18 +622,51 @@ async def setupmybid(
     limityn_value = 'Y' if limityn == 'on' else 'N'
     lmtamt = (limitamt or '').replace(',', '') if limitamt else ''
     bidrate = 1.0 if lcchk_val == 'on' else 0.0
-
-    await erasebid(uno, skey, slot)
-
+    await erasebid(uno, setkey, slot, db)
     for coin in [coinn1, coinn2, coinn3]:
         if coin:
             await setupbid(
-                uno, skey, price, bidsetps, bidrate, askrate, coin, svrno,
+                uno, setkey, price, bidsetps, bidrate, askrate, coin, svrno,
                 tradeset_val, hno, dyn, lmtamt, limityn_value, slot, db
             )
+    return RedirectResponse(url=f"/mytradestat/{uno}/{setkey}/{slot}", status_code=303)
 
-    return RedirectResponse(url=f"/trade?uno={uno}&skey={skey}&tabindex={slot}", status_code=303)
-
+@app.post("/setupbid")
+async def setupmybid(
+    setno: str = Form(...),
+    userno: str = Form(...),
+    slot: str = Form(...),
+    coinn: str = Form(...),
+    initprice: str = Form(...),
+    lcrate: Optional[str] = Form(None),
+    lcchk: Optional[str] = Form(None),
+    tradeset: str = Form(...),
+    setkey: str = Form(...),
+    svrno: str = Form(...),
+    limityn: Optional[str] = Form(None),
+    limitamt: Optional[str] = Form(None),
+        db: AsyncSession = Depends(get_db),
+):
+    sno = int(setno)
+    uno = int(userno)
+    slot = int(slot)
+    coink = coinn
+    price = initprice.replace(',', '') if initprice else ''
+    askrate = lcrate
+    lcchk_val = lcchk
+    tradeset_split = tradeset.split(',')
+    tradeset_val = tradeset_split[0]
+    bidsetps = tradeset_split[1] if len(tradeset_split) > 1 else None
+    hno = tradeset_split[1] if len(tradeset_split) > 1 else None
+    dyn = 'Y' if limityn == 'on' else 'N'
+    limityn_value = 'Y' if limityn == 'on' else 'N'
+    lmtamt = (limitamt or '').replace(',', '') if limitamt else ''
+    bidrate = 1.0 if lcchk_val == 'on' else 0.0
+    svrno = int(svrno)
+    await editbidsetup(sno, uno, setkey, price, bidsetps, bidrate, askrate, coink, svrno,
+                tradeset_val, hno, dyn, lmtamt, limityn_value, slot, db
+            )
+    return RedirectResponse(url=f"/mytradestat/{uno}/{setkey}/{slot}", status_code=303)
 
 
 @app.post('/cancelOrder')
