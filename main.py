@@ -307,6 +307,30 @@ async def getsetups(uno:int, slotno:int, db: AsyncSession = Depends(get_db)):
         print('설정 불러오기 오류', e)
         return False
 
+async def setonoffs(setno:int, yesno:str, db: AsyncSession = Depends(get_db)):
+    try:
+        sql = text("UPDATE traceSetup SET activeYN = :yesno where setupNo=:setno AND attrib not like :xattr")
+        await db.execute(sql, {"setno":setno, "yesno":yesno, "xattr":'%XXXUP%'})
+        await db.commit()
+    except Exception as e:
+        print('거래 ON/OFF 오류', e)
+
+async def setautostop(sno:int, yesno:str, db: AsyncSession = Depends(get_db)):
+    try:
+        sql = text("UPDATE traceSetup SET doubleYN = :yesno where setupNo=:sno")
+        await db.execute(sql, {"sno":sno, "yesno":yesno})
+        await db.commit()
+    except Exception as e:
+        print('자동 멈춤 기능 설정 오류', e)
+
+async def setlconoff(setno:int, srate:float, yesno:float, db: AsyncSession = Depends(get_db)):
+    try:
+        sql = text("UPDATE traceSetup SET bidRate = :brate, askRate = :srate where setupNo=:setno")
+        await db.execute(sql, {"brate":yesno, "srate":srate, "setno":setno})
+        await db.commit()
+    except Exception as e:
+        print('손절 ONOFF 오류', e)
+
 @app.get("/")
 async def root(request: Request):
     return templates.TemplateResponse("/login/login.html", {"request": request})
@@ -452,6 +476,40 @@ async def mytradestat(request:Request ,userno:int,setkey:str,slot:int,user_sessi
         return templates.TemplateResponse('/trade/mytrademain.html', {"request":request, "setups":setups, "user_No":userno,"user_Name":userName, "user_Role":userRole ,"setkey":setkey, "mycoins" :mycoins, "slot":slot, "license":6, "orderlist":orderlist })
     except Exception as e:
         print("트레이딩 상태 불러오기 에러",e)
+
+@app.post('/cancelOrder')
+async def cancelorder(request:Request,uno: int = Form(...), setkey: str = Form(...), uuid: str = Form(...),db: AsyncSession = Depends(get_db)):
+    try:
+        keys = await getKeys(uno,setkey,db)
+        upbit = pyupbit.Upbit(keys[0],keys[1])
+        order = upbit.cancel_order(uuid)
+        return JSONResponse({"success": True, "data": order})
+    except Exception as e:
+        print("주문취소 에러",e)
+
+@app.post('/setyns')
+async def setyns(request:Request,setno: int = Form(...), yn: str = Form(...),db: AsyncSession = Depends(get_db)):
+    try:
+        await setonoffs(setno, yn, db)
+        return JSONResponse({"success": True, "data": yn})
+    except Exception as e:
+        return JSONResponse({"success": False, "data": yn})
+
+@app.post('/setautostop')
+async def setatstop(request:Request,sno: int = Form(...), yn: str = Form(...),db: AsyncSession = Depends(get_db)):
+    try:
+        await setautostop(sno, yn)
+        return JSONResponse({"success": True, "data": yn})
+    except Exception as e:
+        return JSONResponse({"success": False, "data": yn})
+
+@app.post('/setlosscut')
+async def setlosscut(request:Request,sno: int = Form(...), rate: float = Form(...), onoff: float = Form(...), db: AsyncSession = Depends(get_db)):
+    try:
+        await setlconoff(sno, rate, onoff, db)
+        return JSONResponse({"success": True, "data": rate})
+    except Exception as e:
+        return JSONResponse({"success": False, "data": rate})
 
 
 @app.websocket("/ws/coinprice")

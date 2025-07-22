@@ -65,11 +65,11 @@
                                             </td>
                                         </tr>
                                         <tr>
-                                            <td style="text-align: center">시작금액</td>
-                                            <td id="initamount" style="text-align: right"></td>
+                                            <td style="text-align: center">시작금액/한도금액</td>
+                                            <td id="initamount" style="text-align: right">{{ "{:,.0f}".format(setups[0][2]|float)}}/<span {% if setups[0][13] == 'Y' %}style="color: red;"{% endif %}>{{ "{:,.0f}".format(setups[0][14]|float) }} </span></td>
                                         </tr>
                                         <tr>
-                                            <td style="text-align: center">현재가/거래</td>
+                                            <td style="text-align: center">현재가/(매수액/매도액)</td>
                                             <td> <div style="display: flex; width: 100%; text-align: right;">
                                                 <span id="curtrade1-price" style="flex: 1;"></span>
                                                 <span id="curtrade1-bid" style="flex: 1; border-left: 1px solid #eee; border-right: 1px solid #eee;"></span>
@@ -90,10 +90,10 @@
                                             <td class="align-items-center">
                                             <div class="d-flex align-items-center gap-12 justify-content-center">
                                                 <div class="custom-control custom-switch">
-                                                    <input class="custom-control-input" type="checkbox" id="chklc1" name="chklc1"/>
+                                                    <input class="custom-control-input" type="checkbox" id="chklc1" name="chklc1"{% if setups[0][4] == 1.0 %}checked{% endif %}/>
                                                     <label class="custom-control-label" for="chklc1">  </label>
                                                 </div>
-                                                    <input class="form-control-sm" style="text-align: right; border: #717384" type="number" name="lcrate1" id="lcrate1" value="{{ lcrate1 }}" max = "-1.5" min = "-10" step = "0.1">
+                                                    <input class="form-control-sm" style="text-align: right; border: #717384" type="number" name="lcrate1" id="lcrate1" value="{{ setups[0][5] }}" max = "-1.5" min = "-10" step = "0.1">
                                                     <label class="form-control-sm" for="lcrate1" style="margin-bottom:0"> % </label>
                                                     <input type="checkbox" name="atstop1" id="atstop1" {% if setups[0][12] == 'Y'%}checked{% endif %}><label for="atstop1" style="margin-bottom:0"> 손절 후 자동OFF</label>
                                             </div>
@@ -143,10 +143,10 @@
                                         </tr>
                                         <tr>
                                             <td style="text-align: center">시작금액</td>
-                                            <td id="initamount2" style="text-align: right"></td>
+                                            <td id="initamount2" style="text-align: right">{{ "{:,.0f}".format(setups[1][2]|float)}}/<span {% if setups[1][13] == 'Y' %}style="color: red;"{% endif %}>{{ "{:,.0f}".format(setups[1][14]|float) }} </span></td>
                                         </tr>
                                         <tr>
-                                            <td style="text-align: center">현재가/거래</td>
+                                            <td style="text-align: center">현재가/(매수액/매도액)</td>
                                             <td> <div style="display: flex; width: 100%; text-align: right;">
                                                 <span id="curtrade2-price" style="flex: 1;"></span>
                                                 <span id="curtrade2-bid" style="flex: 1; border-left: 1px solid #eee; border-right: 1px solid #eee;"></span>
@@ -167,10 +167,10 @@
                                             <td class="align-items-center">
                                             <div class="d-flex align-items-center gap-12 justify-content-center">
                                                 <div class="custom-control custom-switch">
-                                                    <input class="custom-control-input" type="checkbox" id="chklc2" name="chklc2"/>
+                                                    <input class="custom-control-input" type="checkbox" id="chklc2" name="chklc2"{% if setups[1][4] == 1.0 %}checked{% endif %}/>
                                                     <label class="custom-control-label" for="chklc2">  </label>
                                                 </div>
-                                                    <input class="form-control-sm" style="text-align: right; border: #717384" type="number" name="lcrate2" id="lcrate2" value="{{ lcrate2 }}" max = "-1.5" min = "-10" step = "0.1">
+                                                    <input class="form-control-sm" style="text-align: right; border: #717384" type="number" name="lcrate2" id="lcrate2" value="{{ setups[1][5] }}" max = "-1.5" min = "-10" step = "0.1">
                                                     <label class="form-control-sm" for="lcrate2" style="margin-bottom:0"> %    </label>
                                                     <input type="checkbox" name="atstop2" id="atstop2" {% if setups[1][12] == 'Y'%}checked{% endif %}><label for="atstop2" style="margin-bottom:0"> 손절 후 자동OFF</label>
                                             </div>
@@ -220,10 +220,10 @@
                                         </tr>
                                         <tr>
                                             <td style="text-align: center">시작금액</td>
-                                            <td id="initamount3" style="text-align: right"></td>
+                                            <td id="initamount3" style="text-align: right">{{ "{:,.0f}".format(setups[2][2]|float)}}/<span {% if setups[2][13] == 'Y' %}style="color: red;"{% endif %}>{{ "{:,.0f}".format(setups[2][14]|float) }} </span></td>
                                         </tr>
                                         <tr>
-                                            <td style="text-align: center">현재가/거래</td>
+                                            <td style="text-align: center">현재가/(매수액/매도액)</td>
                                             <td> <div style="display: flex; width: 100%; text-align: right;">
                                                 <span id="curtrade3-price" style="flex: 1;"></span>
                                                 <span id="curtrade3-bid" style="flex: 1; border-left: 1px solid #eee; border-right: 1px solid #eee;"></span>
@@ -245,10 +245,10 @@
                                             <td class="align-items-center">
                                             <div class="d-flex align-items-center gap-12 justify-content-center">
                                                 <div class="custom-control custom-switch">
-                                                    <input class="custom-control-input" type="checkbox" id="chklc3" name="chklc3"/>
+                                                    <input class="custom-control-input" type="checkbox" id="chklc3" name="chklc3"{% if setups[2][4] == 1.0 %}checked{% endif %}/>
                                                     <label class="custom-control-label" for="chklc3">  </label>
                                                 </div>
-                                                    <input class="form-control-sm" style="text-align: right; border: #717384" type="number" name="lcrate3" id="lcrate3" value="{{ lcrate3 }}" max = "-1.5" min = "-10" step = "0.1">
+                                                    <input class="form-control-sm" style="text-align: right; border: #717384" type="number" name="lcrate3" id="lcrate3" value="{{ setups[2][5] }}" max = "-1.5" min = "-10" step = "0.1">
                                                     <label class="form-control-sm" for="lcrate3" style="margin-bottom:0"> % </label>
                                                     <input type="checkbox" name="atstop3" id="atstop3" {% if setups[2][12] == 'Y'%}checked{% endif %}><label for="atstop3" style="margin-bottom:0"> 손절 후 자동OFF</label>
                                             </div>
@@ -279,7 +279,6 @@
                             </div>
                         </div>
                     </div>
-                    <br>
                     <div class="col-lg-4">
                         <div class="card shadow mb-4">
                             <div class="card-header py-3">
@@ -367,7 +366,7 @@
                                         <td style="text-align: right">{{ "{:,.0f}".format(items['volume']|float * items['price']|float * 0.0005) }}</td>
                                         <td>
                                             <button class="btn form-control btn-primary"
-                                                    onclick="cancelorder(user_No }},'{{ items["uuid"] }}')">
+                                                    onclick="cancelorder({{ user_No }}, {{ setkey }},'{{ items["uuid"] }}')">
                                                 거래 취소
                                             </button>
                                         </td>
@@ -631,11 +630,13 @@ ws.onmessage = function(event) {
     });
 
     function setyn(setno, yn) {
-        data = [setno, yn]
+        const formData = new FormData();
+            formData.append('setno', setno);
+            formData.append('yn', yn);
         $.ajax({
             type: "POST",
             url: '/setyns',
-            data: data,
+            data: formData,
             async: false,
             processData: false,
             contentType: false,
@@ -643,69 +644,87 @@ ws.onmessage = function(event) {
                 if (res == "OVER") {
                     alert("10만원 이상의 자산이 지갑에 있습니다. \n 지갑 내 기존 코인 정리 후 트레이딩이 가능합니다.");
                 }
-                location.reload();
-            }
-        });
-    }
-
-    function sethr(uno, hr) {
-        data = [uno, hr]
-        $.ajax({
-            type: "POST",
-            url: '/sethr',
-            data: data,
-            processData: false,
-            contentType: false,
-            success: (res) => {
-                location.reload();
+                const originalUrl = sessionStorage.getItem('originalUrl');
+                    if (originalUrl) {
+                        location.replace(originalUrl);
+                        } else {
+                        location.reload();
+                    }
             }
         });
     }
 
     function setautostop(sno, yesno){
-        data = [sno, yesno]
+        const formData = new FormData();
+            formData.append('sno', sno);
+            formData.append('yesno', yesno);
         $.ajax({
             type: "POST",
-            url: '/setatstop',
-            data: data,
+            url: '/setautostop',
+            data: formData,
             processData: false,
             contentType: false,
             success: (res) => {
-                location.reload();
+                console.log(res);
+                const originalUrl = sessionStorage.getItem('originalUrl');
+                if (originalUrl) {
+                    location.replace(originalUrl);
+                } else {
+                    location.reload();
+                }
             }
         });
     }
 
         function setlc(sno,rate,onoff) {
+        const formData = new FormData();
+            formData.append('sno', sno);
+            formData.append('rate', rate);
+            formData.append('onoff', onoff);
         data = [sno, rate, onoff]
         $.ajax({
             type: "POST",
-            url: '/setlc',
-            data: data,
+            url: '/setlosscut',
+            data: formData,
             processData: false,
             contentType: false,
             success: (res) => {
-                location.reload();
+                console.log(res);
+                const originalUrl = sessionStorage.getItem('originalUrl');
+                if (originalUrl) {
+                    location.replace(originalUrl);
+                } else {
+                    location.reload();
+                }
             }
         });
     }
 
-    function cancelorder(uno, uuid) {
+    function cancelorder(uno, setkey , uuid) {
         if (confirm("본 거래를 취소 하시겠습니까?")) {
-            data = [uno, uuid]
-            console.log(data);
+            const formData = new FormData();
+            formData.append('uno', uno);
+            formData.append('setkey', setkey);
+            formData.append('uuid', uuid);
+
             $.ajax({
                 type: "POST",
                 url: '/cancelOrder',
-                data: data,
+                data: formData,
                 processData: false,
                 contentType: false,
                 success: (res) => {
                     console.log(res);
-                    location.reload();
+                    const originalUrl = sessionStorage.getItem('originalUrl');
+                    if (originalUrl) {
+                        location.replace(originalUrl);
+                        } else {
+                        location.reload();
+                    }
                 }
             });
-        } else {
+        }else{
+            alert ('거래 취소를 실패했습니다. !!')
         }
     }
 
