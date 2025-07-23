@@ -160,6 +160,7 @@
 <script>
 $(document).ready(function () {
     calcvalue();
+    setInterval(refreshWalletTable, 30000);
 });
 
 const coins = [];
@@ -213,6 +214,78 @@ ws.onclose = function() {
     console.log("WebSocket closed");
 };
 
+let userNo = {{ user_No }};    // 실제 템플릿 변수 사용
+let setKey = "{{ setkey }}";   // 실제 템플릿 변수 사용
+
+function refreshWalletTable() {
+    $.get(`/rest_getwallet/${userNo}/${setKey}`, function(res) {
+        if (res.success && res.data) {
+            updateWalletTable(res.data);
+        }
+    });
+}
+
+function updateWalletTable(mycoins) {
+    let $tbody = $("#dataTable tbody");
+    // 기존 행 삭제 (합계 행은 남겨둠)
+    $tbody.find("tr").not(":last").remove();
+
+    // 각 코인별로 행 추가 (템플릿에 맞게 생성)
+    mycoins.forEach(function(coin) {
+        let isKRW = coin.currency === "KRW";
+        let row = `
+        <tr>
+            <td class="coins" style="text-align: center">
+                <a href="https://upbit.com/exchange?code=CRIX.UPBIT.KRW-${coin.currency}" target="_blank">${coin.currency}</a>
+            </td>
+            <td class="vola" style="text-align: right">${numberWithCommas(coin.balance)}</td>
+            <td class="volb" style="text-align: right">${numberWithCommas(coin.locked)}</td>
+            <td class="aprice" style="text-align: right">${isKRW ? 1 : numberWithCommas(coin.avg_buy_price)}</td>
+            <td class="cprice" style="text-align: right">-</td>
+            <td class="change"></td>
+            <td class="cvalue" style="text-align: right"></td>
+            <td class="balanceprice" style="text-align: right"></td>
+            <td class="balancerate" style="text-align: right"></td>
+            <td class="balancediff" style="text-align: right"></td>
+            ${!isKRW
+                ? `<td style="display: flex; justify-content: space-between;">
+                    <button class="btn form-control btn-primary" style="width: 48%;"
+                        onclick="sellcoin(${userNo},${setKey},'${coin.currency}',${coin.balance})">매도</button>
+                    <button class="btn form-control btn-danger" style="width: 48%;"
+                        onclick="buycoin(${userNo},${setKey},'${coin.currency}')">매수</button>
+                </td>`
+                : `<td style="text-align: center">
+                    <div style="display: flex;align-items: center;justify-content: center;gap: 1rem;margin-left: -.75rem;margin-right: -.75rem;">
+                        <div>매도</div>
+                        <div>
+                            <select class="form-control" name="sellrate" id="sellrate">
+                                <option value=1>100%</option>
+                                <option value=2>50%</option>
+                                <option value=4>25%</option>
+                                <option value=10>10%</option>
+                                <option value=20>5%</option>
+                                <option value=100>1%</option>
+                            </select>
+                        </div>
+                        <div>매수</div>
+                        <div>
+                            <input id="buyamt" name="buyamt" class="form-control" type="text"
+                                value="10000" placeholder="10,000" max="2000000" min="10000"
+                                step="10000" style="text-align: right"
+                                oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');"/>
+                        </div>
+                    </div>
+                </td>`
+            }
+        </tr>
+        `;
+        // 합계행 위에 삽입
+        $tbody.find("tr:last").before(row);
+    });
+
+    // 테이블 값 재계산
+    calcvalue();
+}
 
 function safeParseFloat(val) {
     if (typeof val === "undefined" || val === null) return 0;
