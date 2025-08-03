@@ -140,7 +140,6 @@ async def check_setkey(uno:int,setkey:str, db: AsyncSession = Depends(get_db)):
     except Exception as e:
         print("코드 체크 에러",e)
 
-
 async def get_userdetail(uno:int,setkey:str, db: AsyncSession = Depends(get_db)):
     try:
         sql = text("SELECT * FROM traceUser WHERE userNo=:userno and setupKey=:setkey and attrib not like :xattr")
@@ -152,7 +151,6 @@ async def get_userdetail(uno:int,setkey:str, db: AsyncSession = Depends(get_db))
             return False
     except Exception as e:
         print("유저정보 취득 에러",e)
-
 
 def require_login(request: Request):
     user_no = request.session.get("user_No")
@@ -372,7 +370,6 @@ async def update_userdtl(uno:int, key1:str , key2:str, svrno:int ,db: AsyncSessi
         return True
     except Exception as e:
         return False
-
 
 async def setupbid(uno:int, setkey:str, initbid:float, bidstep:int, bidrate:float, askrate:float, coinn:str, svrno:int, tradeset:int, holdNo:int, doubleYN:str, limitamt:float,limityn:str, slot:int, db: AsyncSession = Depends(get_db)):
     chkkey = await check_setkey(uno, setkey, db)
@@ -700,7 +697,6 @@ async def setupmybid(
             )
     return RedirectResponse(url=f"/mytradestat/{uno}/{setkey}/{slot}", status_code=303)
 
-
 @app.post("/changemypass")
 async def change_password(
     data: dict = Body(...),  # JSON body를 dict로 받음
@@ -723,7 +719,6 @@ async def update_userdetail(request:Request,
     await update_userdtl(uno, apikey1, apikey2, svrno, db)
     return RedirectResponse(url=f"/userEdit/{uno}/{setkey}", status_code=303)
 
-
 @app.get('/rest_getorder/{userno}/{setkey}/{slot}')
 async def restgetorder(request:Request ,userno:int,setkey:str,slot:int,db: AsyncSession = Depends(get_db)):
     try:
@@ -732,7 +727,6 @@ async def restgetorder(request:Request ,userno:int,setkey:str,slot:int,db: Async
     except Exception as e:
         print("Error!!", e)
         return JSONResponse({"success": False, "data": [] })
-
 
 @app.post('/cancelOrder')
 async def cancelorder(request:Request,uno: int = Form(...), setkey: str = Form(...), uuid: str = Form(...),db: AsyncSession = Depends(get_db)):
@@ -767,7 +761,6 @@ async def setlosscut(request:Request,sno: int = Form(...), rate: float = Form(..
         return JSONResponse({"success": True, "data": rate})
     except Exception as e:
         return JSONResponse({"success": False, "data": rate})
-
 
 @app.websocket("/ws/coinprice")
 async def coin_price_ws(websocket: WebSocket):
