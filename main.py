@@ -7,7 +7,7 @@ import time
 from typing import Dict
 import math
 import aiohttp
-from fastapi import FastAPI, Depends, Request, Form, Response, HTTPException, status, File, UploadFile, Query
+from fastapi import FastAPI, Depends, Request, Form, Response, HTTPException, status, File, UploadFile, Query, Body
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
@@ -139,6 +139,20 @@ async def check_setkey(uno:int,setkey:str, db: AsyncSession = Depends(get_db)):
             return False
     except Exception as e:
         print("코드 체크 에러",e)
+
+
+async def get_userdetail(uno:int,setkey:str, db: AsyncSession = Depends(get_db)):
+    try:
+        sql = text("SELECT * FROM traceUser WHERE userNo=:userno and setupKey=:setkey and attrib not like :xattr")
+        result = await db.execute(sql, {"userno":uno,"setkey":setkey,"xattr": "%XXXUP%"})
+        row = result.fetchone()
+        if row[0] == uno:
+            return row
+        else:
+            return False
+    except Exception as e:
+        print("유저정보 취득 에러",e)
+
 
 def require_login(request: Request):
     user_no = request.session.get("user_No")
@@ -350,6 +364,16 @@ async def erasebid(uno:int, setkey:str, tabindex:int, db: AsyncSession = Depends
     except Exception as e:
         return False
 
+async def update_userdtl(uno:int, key1:str , key2:str, svrno:int ,db: AsyncSession = Depends(get_db)):
+    try:
+        sql2 = text("update traceUser set apiKey1 = :key1 , apiKey2 = :key2, serverNo = :svrno where userNo=:userno")
+        await db.execute(sql2, {"key1": key1, "key2": key2, "svrno":svrno ,"userno":uno})
+        await db.commit()
+        return True
+    except Exception as e:
+        return False
+
+
 async def setupbid(uno:int, setkey:str, initbid:float, bidstep:int, bidrate:float, askrate:float, coinn:str, svrno:int, tradeset:int, holdNo:int, doubleYN:str, limitamt:float,limityn:str, slot:int, db: AsyncSession = Depends(get_db)):
     chkkey = await check_setkey(uno, setkey, db)
     if chkkey is True:
@@ -526,6 +550,14 @@ async def tradetrend(request:Request ,userno:int,setkey:str, db: AsyncSession = 
     userRole = request.session.get("user_Role")
     return templates.TemplateResponse('./trade/mysettletrend.html', {"request": request,"trcoins": trcoins, "user_No":userno,"user_Name":userName, "user_Role":userRole ,"setkey":setkey, "mycoins" :mycoins})
 
+@app.get('/userEdit/{userno}/{setkey}')
+async def useredit(request:Request ,userno:int,setkey:str, db: AsyncSession = Depends(get_db)):
+    userName = request.session.get("user_Name")
+    userRole = request.session.get("user_Role")
+    userdtl = await get_userdetail(userno,setkey,db)
+    print(userdtl)
+    return templates.TemplateResponse('./login/userDtl.html', {"request": request,"user_No":userno,"user_Name":userName, "user_Role":userRole ,"setkey":setkey, "userdtl":userdtl})
+
 @app.get('/rest_getwallet/{userno}/{setkey}')
 async def restgetwallet(request:Request ,userno:int,setkey:str,db: AsyncSession = Depends(get_db)):
     try:
@@ -667,6 +699,29 @@ async def setupmybid(
                 tradeset_val, hno, dyn, lmtamt, limityn_value, slot, db
             )
     return RedirectResponse(url=f"/mytradestat/{uno}/{setkey}/{slot}", status_code=303)
+
+
+@app.post("/changemypass")
+async def change_password(
+    data: dict = Body(...),  # JSON body를 dict로 받음
+    db: AsyncSession = Depends(get_db)
+):
+    sql = text("UPDATE traceUser SET userPasswd = PASSWORD(:passwd) WHERE userNo = :userno")
+    await db.execute(sql, {"passwd": data["passwd"], "userno": data["uno"]})
+    await db.commit()
+    return {"result": "success"}
+
+@app.post("/updateuserdtl")
+async def update_userdetail(request:Request,
+    uno: str = Form(...),
+    apikey1: str = Form(...),
+    apikey2: str = Form(...),
+    svrno: str = Form(...),
+    db: AsyncSession = Depends(get_db),
+):
+    setkey = request.session.get("setKey")
+    await update_userdtl(uno, apikey1, apikey2, svrno, db)
+    return RedirectResponse(url=f"/userEdit/{uno}/{setkey}", status_code=303)
 
 
 @app.get('/rest_getorder/{userno}/{setkey}/{slot}')

@@ -126,6 +126,11 @@
                                     <td id="wonsum" style="text-align: right"></td>
                                     <td id="estsum" style="text-align: right"></td>
                                     <td id="sumdiff" style="text-align: right"></td>
+                                    <td colspan="3">
+                                        <div id="refresh-timer" style="font-weight:bold; color:#2563eb; text-align: center; vertical-align: middle;">
+                                            리프레시까지 남은 시간: <span id="refresh-remaining"></span>
+                                        </div>
+                                    </td>
                                 </tr>
                                 </tbody>
                             </table>
@@ -160,8 +165,52 @@
 <script>
 $(document).ready(function () {
     calcvalue();
-    setInterval(refreshWalletTable, 30000);
+    startRefreshTimer();
+    setInterval(refreshWalletTable, 300000);
 });
+
+let refreshIntervalSec = 300; // 5분 = 300초
+let refreshRemaining = refreshIntervalSec;
+let refreshTimerInterval = null;
+
+function startRefreshTimer() {
+    // 최초 표시
+    updateRefreshDisplay();
+
+    // 기존 타이머 있으면 제거
+    if (refreshTimerInterval) clearInterval(refreshTimerInterval);
+
+    // 1초마다 남은 시간 갱신
+    refreshTimerInterval = setInterval(function () {
+        refreshRemaining--;
+        if (refreshRemaining <= 0) {
+            refreshRemaining = refreshIntervalSec; // 리셋
+        }
+        updateRefreshDisplay();
+    }, 1000);
+}
+
+function updateRefreshDisplay() {
+    // 초 또는 분:초 형태로 표시
+    let min = Math.floor(refreshRemaining / 60);
+    let sec = refreshRemaining % 60;
+    let text = min > 0
+        ? `${min}분 ${sec < 10 ? '0' : ''}${sec}초`
+        : `${sec}초`;
+    $("#refresh-remaining").text(text);
+}
+
+// 자동 리프레시 후 타이머 리셋
+function refreshWalletTable() {
+    $.get(`/rest_getwallet/${userNo}/${setKey}`, function(res) {
+        if (res.success && res.data) {
+            updateWalletTable(res.data);
+        }
+        // 리프레시 후 타이머 리셋
+        refreshRemaining = refreshIntervalSec;
+        updateRefreshDisplay();
+    });
+}
 
 const coins = [];
 {% for coin in mycoins %}
