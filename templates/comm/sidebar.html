@@ -55,9 +55,25 @@
             <div class="bg-white py-2 collapse-inner rounded">
                 <h6 class="collapse-header">설정 가능 목록</h6>
                 <a class="collapse-item" href="/mytradeSet/{{ user_No }}">거래설정</a>
-                <a class="collapse-item" href="/tradetrend/{{ user_No }}/{{ setkey }}">주문 동향</a>
-                <a class="collapse-item" href="/settletrend/{{ user_No }}/{{ setkey }}">체결 트렌드</a>
+                <a class="collapse-item" href="/tradetrend/{{ user_No }}/{{ setkey }}">지갑내 자산 주문 동향</a>
+                <a class="collapse-item" href="/settletrend/{{ user_No }}/{{ setkey }}">지갑내 자산 체결 트렌드</a>
                 <a class="collapse-item" href="/predict_list/{{ user_No }}">가격변동 예측 상황</a>
+            </div>
+        </div>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#UpbitTrendsCoins"
+           aria-expanded="true" aria-controls="UpbitTrendsCoins">
+            <i class="fas fa-fw fa-chart-bar"></i>
+            <span>시장 거래 트렌드</span>
+        </a>
+        <div id="UpbitTrendsCoins" class="collapse" aria-labelledby="headingUtilities"
+             data-parent="#accordionSidebar">
+            <div class="bg-white py-2 collapse-inner rounded">
+                <h6 class="collapse-header">시장 거래 트렌드</h6>
+                <a class="collapse-item" href="/hotcoin_list/{{ user_No }}">추천종목 거래량</a>
+                <a class="collapse-item" href="/upbittradetrend/{{ user_No }}/{{ setkey }}">추천종목 주문 동향</a>
+                <a class="collapse-item" href="/upbitsettletrend/{{ user_No }}/{{ setkey }}">추천종목 체결 트렌드</a>
             </div>
         </div>
     </li>

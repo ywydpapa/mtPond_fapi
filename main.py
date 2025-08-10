@@ -4,6 +4,7 @@ import dotenv
 import os
 import asyncio
 import time
+from datetime import datetime
 from typing import Dict
 import math
 import aiohttp
@@ -106,6 +107,28 @@ async def listUsers(db: AsyncSession = Depends(get_db)):
         print('접속오류', e)
     finally:
         return rows
+
+async def get_hotcoins(request, db):
+    try:
+        query = text("SELECT * FROM orderbookAmt where dateTag = (select max(dateTag) from orderbookAmt)")
+        result = await db.execute(query)
+        orderbooks = result.fetchall()
+        return orderbooks
+    except Exception as e:
+        print("Error!!", e)
+        return False
+
+
+async def get_hotamt(request, db):
+    try:
+        query = text("select * from tradeAmt order by regDate desc limit 1")
+        result = await db.execute(query)
+        hotamt = result.fetchone()
+        return hotamt
+    except Exception as e:
+        print("Error!!", e)
+        return False
+
 
 async def detailuser(uno:int, db: AsyncSession = Depends(get_db)):
     row = None
@@ -328,6 +351,27 @@ async def setonoffs(setno:int, yesno:str, db: AsyncSession = Depends(get_db)):
     except Exception as e:
         print('거래 ON/OFF 오류', e)
 
+async def get_trsetups(uno, db: AsyncSession = Depends(get_db)):
+    try:
+        query = text("SELECT * FROM polarisSets where userNo = :uno and attrib not like :attxx")
+        result = await db.execute(query, {"uno": uno, "attxx": "%XXX%"})
+        mysetups = result.fetchall()
+        mysets = []
+        for setup in mysetups:
+            mysets.append({
+                "setupNo": setup[0],
+                "coinName": setup[2],
+                "stepAmt": setup[3],
+                "tradeType": setup[4],
+                "maxAmt": setup[5],
+                "useYN": setup[6],
+            })
+    except Exception as e:
+        print("Get Setup Error!!", e)
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+    finally:
+        return mysets
+
 async def setautostop(sno:int, yesno:str, db: AsyncSession = Depends(get_db)):
     try:
         sql = text("UPDATE traceSetup SET doubleYN = :yesno where setupNo=:sno")
@@ -447,6 +491,47 @@ async def logout(request: Request):
     request.session.clear()  # 세션 삭제
     return RedirectResponse(url="/")
 
+
+@app.get("/hotcoin_list/{uno}")
+async def hotcoinlist(request: Request, uno: int, user_session: int = Depends(require_login),
+                      db: AsyncSession = Depends(get_db)):
+    orderbooks = None
+    if uno != user_session:
+        return RedirectResponse(url="/", status_code=303)
+    usern = request.session.get("user_Name")
+    setkey = request.session.get("setupKey")
+    try:
+        orderbooks = await get_hotcoins(request, db)
+        hotamt = await get_hotamt(request, db)
+        gettime = orderbooks[0][8]
+        nowtt = datetime.now()
+        diff = nowtt - gettime
+        days = diff.days
+        hours = diff.seconds // 3600
+        minutes = (diff.seconds % 3600) // 60
+        seconds = diff.seconds % 60
+        time_diff = f"{days}일 {hours}시간 {minutes}분 {seconds}초 "
+        is_reloadable = "Y" if diff.total_seconds() > 10800 else "N" # 3시간
+        trsetups = await get_trsetups(uno, db)
+        return templates.TemplateResponse(
+            "/trade/hotcoinlist.html",
+            {
+                "request": request,
+                "userNo": uno,
+                "user_No": uno,
+                "userName": usern,
+                "setkey": setkey,
+                "orderbooks": orderbooks,
+                "time_diff": time_diff,
+                "trsetups": trsetups,
+                "reloadable": is_reloadable,
+                "hotamt": hotamt,
+            }
+        )
+    except Exception as e:
+        print("Get Hotcoins Error !!", e)
+
+
 @app.get("/balance/{uno}")
 async def my_balance(request: Request, uno: int, user_session: int = Depends(require_login),
                      db: AsyncSession = Depends(get_db)):
@@ -467,6 +552,8 @@ async def my_balance(request: Request, uno: int, user_session: int = Depends(req
         mycoins = None
     return templates.TemplateResponse("wallet/mywallet.html",
                                       {"request": request, "user_No": uno,"user_Name":userName, "user_Role":userRole, "setkey":setKey,"license":userLicense ,"mycoins": mycoins, "myavgp":myavgp, "cuprices":cprices})
+
+
 
 @app.post("/tradebuymarket/{uno}/{setkey}/{coinn}/{costk}")
 async def tradebuymarket(request: Request,uno: int,setkey:str, coinn: str, costk: float, user_session: int = Depends(require_login), db: AsyncSession = Depends(get_db)):
@@ -539,6 +626,16 @@ async def tradetrend(request:Request ,userno:int,setkey:str, db: AsyncSession = 
     userRole = request.session.get("user_Role")
     return templates.TemplateResponse('./trade/mytradingtrend.html', {"request": request,"trcoins": trcoins, "user_No":userno,"user_Name":userName, "user_Role":userRole ,"setkey":setkey, "mycoins" :mycoins})
 
+
+@app.get('/upbittradetrend/{userno}/{setkey}')
+async def upbittradetrend(request:Request ,userno:int,setkey:str, db: AsyncSession = Depends(get_db)):
+    trcoins = []
+    hotcoins = await get_hotcoins(request, db)
+    trcoins = [row[3] for row in hotcoins]
+    userName = request.session.get("user_Name")
+    userRole = request.session.get("user_Role")
+    return templates.TemplateResponse('./trade/upbittradingtrend.html', {"request": request,"trcoins": trcoins, "user_No":userno,"user_Name":userName, "user_Role":userRole ,"setkey":setkey})
+
 @app.get('/settletrend/{userno}/{setkey}')
 async def tradetrend(request:Request ,userno:int,setkey:str, db: AsyncSession = Depends(get_db)):
     trcoins = await tradedcoins(userno, db)
@@ -546,6 +643,15 @@ async def tradetrend(request:Request ,userno:int,setkey:str, db: AsyncSession = 
     userName = request.session.get("user_Name")
     userRole = request.session.get("user_Role")
     return templates.TemplateResponse('./trade/mysettletrend.html', {"request": request,"trcoins": trcoins, "user_No":userno,"user_Name":userName, "user_Role":userRole ,"setkey":setkey, "mycoins" :mycoins})
+
+@app.get('/upbitsettletrend/{userno}/{setkey}')
+async def upbittradetrend(request:Request ,userno:int,setkey:str, db: AsyncSession = Depends(get_db)):
+    trcoins = []
+    hotcoins = await get_hotcoins(request, db)
+    trcoins = [row[3] for row in hotcoins]
+    userName = request.session.get("user_Name")
+    userRole = request.session.get("user_Role")
+    return templates.TemplateResponse('./trade/upbitsettletrend.html', {"request": request,"trcoins": trcoins, "user_No":userno,"user_Name":userName, "user_Role":userRole ,"setkey":setkey })
 
 @app.get('/userEdit/{userno}/{setkey}')
 async def useredit(request:Request ,userno:int,setkey:str, db: AsyncSession = Depends(get_db)):
