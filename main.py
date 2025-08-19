@@ -1092,3 +1092,14 @@ async def coin_trade_ws(websocket: WebSocket):
         print(f"WebSocket disconnected: coins {coin_list}")
     except Exception as e:
         print("WebSocket Error:", e)
+
+
+@app.get('/upbittop30/{uno}/{setkey}')
+async def upbittop30(request:Request,uno:int,setkey:str,db: AsyncSession = Depends(get_db)):
+    userName = request.session.get("user_Name")
+    userRole = request.session.get("user_Role")
+    setkey = request.session.get("setKey")
+    trcnt = request.session.get("License")
+    serverno = request.session.get("server_No")
+    return templates.TemplateResponse('/trade/upbittop30.html', {"request": request, "trcnt": trcnt, "user_Name": userName, "setkey": setkey, "user_No": uno, "user_Role": userRole,
+                                       "server_No": serverno})
