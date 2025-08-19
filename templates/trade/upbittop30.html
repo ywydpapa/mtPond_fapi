@@ -36,7 +36,13 @@
             {% include '/comm/adtopbar.html' %}
             <!-- Begin Page Content -->
             <div class="container-fluid">
-                <h2 class="mb-4">Upbit 코인 실시간 체결금액 상위 30 모니터링</h2>
+               <div class="d-flex align-items-center justify-content-between mb-4">
+                        <h2 class="mb-0">Upbit 코인 실시간 체결금액 상위 30 모니터링</h2>
+                        <div class="d-flex align-items-center">
+                        <h5 class="mb-0 mr-2">구매금액</h5>
+                        <input type="number" id="buyamt" value="100000" step="10000" style="width: 100px; text-align: right; margin-right: 10px;">
+                        </div>
+                    </div>
                     <table class="table table-striped table-bordered align-middle text-center" id="trade-table">
                     <thead class="table-light">
                         <tr style="text-align: center;">
