@@ -537,7 +537,7 @@ async def login(request: Request, response: Response, uid: str = Form(...), upw:
     request.session["user_Role"] = user[0][3]
     request.session["License"] = user[0][4]
     request.session["setKey"] = user[1]
-    return RedirectResponse(url=f"/balance/{user[0][0]}", status_code=303)
+    return RedirectResponse(url=f"/upbittop30/{user[0][0]}/{user[1]}", status_code=303)
 
 @app.get("/logout")
 async def logout(request: Request):
