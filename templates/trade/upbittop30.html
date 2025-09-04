@@ -45,16 +45,16 @@
                     </div>
                     <div class="d-flex align-items-center justify-content-between mb-4">
                         <table class="table table-striped table-bordered align-middle text-center" id="coinTable">
-                            <td>직접구매</td>
+                            <td>직접 매수</td>
                             <td>
                                 <select id="selcoin" name="selcoin" class="form-control form-select">
-                                <option value="">직접구매할 코인을 선택해 주세요!</option>
+                                <option value="">직접매수할 코인을 선택해 주세요!</option>
                                     {%for coin in coins|sort%}
                                     <option value="{{coin}}">{{coin}}</option>
                                 {% endfor %}
                                 </select>
                             </td>
-                            <td><button class="form-control btn-primary" onclick="buycoin2()">구매</button></td>
+                            <td><button class="form-control btn-primary" onclick="buycoin2()">매수</button></td>
                         </table>
                     </div>
                     <table class="table table-striped table-bordered align-middle text-center" id="trade-table">
