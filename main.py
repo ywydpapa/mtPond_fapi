@@ -1101,5 +1101,6 @@ async def upbittop30(request:Request,uno:int,setkey:str,db: AsyncSession = Depen
     setkey = request.session.get("setKey")
     trcnt = request.session.get("License")
     serverno = request.session.get("server_No")
-    return templates.TemplateResponse('/trade/upbittop30.html', {"request": request, "trcnt": trcnt, "user_Name": userName, "setkey": setkey, "user_No": uno, "user_Role": userRole,
+    coins = pyupbit.get_tickers(fiat="KRW")
+    return templates.TemplateResponse('/trade/upbittop30.html', {"request": request, "trcnt": trcnt, "user_Name": userName, "setkey": setkey, "user_No": uno, "user_Role": userRole, "coins":coins ,
                                        "server_No": serverno})
