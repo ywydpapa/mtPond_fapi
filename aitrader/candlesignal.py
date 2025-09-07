@@ -7,8 +7,6 @@ from statsmodels.tsa.arima.model import ARIMA
 import xgboost as xgb
 import lightgbm as lgb
 import numpy as np
-import sklearn as sk
-from lightgbm import LGBMRegressor
 
 def create_features(df, n_lags=5):
     df_feat = df.copy()
@@ -75,15 +73,6 @@ def predict_future_price(df, periods=3, freq='3min'):
     forecast = model.predict(future)
     future_price = forecast['yhat'].iloc[-periods:].mean()
     return future_price
-
-def predict_price_prophet(df, periods=3, freq='1min'):
-    from prophet import Prophet
-    df = df.rename(columns={'candle_date_time_kst': 'ds', 'trade_price': 'y'})
-    model = Prophet()
-    model.fit(df)
-    future = model.make_future_dataframe(periods=periods, freq=freq)
-    forecast = model.predict(future)
-    return forecast['yhat'].iloc[-periods:].mean()
 
 def predict_price_arima(df, periods=3):
     from statsmodels.tsa.arima.model import ARIMA
@@ -163,46 +152,104 @@ def peak_trade(
     df['prev_price'] = df['trade_price'].shift(1)
     df['change'] = df['trade_price'] - df['prev_price']
     df['rate'] = (df['trade_price'] - df['prev_price']) / df['prev_price']
+    # 볼린저 밴드 계산 (20기간, 표준편차 2)
+    window = 20
+    k = 2
+    window2 = 4
+    k2 = 4
+    df['middle'] = df['trade_price'].rolling(window).mean()
+    df['mavg'] = df['trade_price'].rolling(window).mean()
+    df['std'] = df['trade_price'].rolling(window).std()
+    df['upper'] = df['mavg'] + k * df['std']
+    df['lower'] = df['mavg'] - k * df['std']
+    df['middle2'] = df['trade_price'].rolling(window2).mean()
+    df['mavg2'] = df['trade_price'].rolling(window2).mean()
+    df['std2'] = df['trade_price'].rolling(window2).std()
+    df['upper2'] = df['mavg2'] + k2 * df['std2']
+    df['lower2'] = df['mavg2'] - k2 * df['std2']
+    # 볼린저밴드 폭 계산
+    df['bb_width'] = df['upper'] - df['lower']
+    df['bb_width2'] = df['upper2'] - df['lower2']
+    # 최근 10개 캔들의 평균폭 계산
+    avg_bb_width_10 = df['bb_width'].tail(10).mean()
+    avg_bb_width_20 = df['bb_width'].tail(20).mean()
+    # === VWMA(거래량 가중이동평균) 20 추가 ===
+    df['vwma'] = (df['trade_price'] * df['candle_acc_trade_volume']).rolling(window).sum() / df['candle_acc_trade_volume'].rolling(window).sum()
     up_candles = df[df['change'] > 0]
     down_candles = df[df['change'] < 0]
-    avg_up_rate = up_candles['rate'].mean() * 100  # %
-    avg_down_rate = down_candles['rate'].mean() * 100  # %
-    print(f"상승봉 평균 상승률: {avg_up_rate:.3f}%")
-    print(f"하강봉 평균 하강률: {avg_down_rate:.3f}%")
-    # =====================================
-    #AI 신호예측 부분
+    avg_up_rate = up_candles['rate'].tail(10).mean() * 100  # %
+    avg_down_rate = down_candles['rate'].tail(10).mean() * 100  # %
     trsignal = ''
     try:
         freq = 'h' if 'h' in candle_unit else 'min'
         # Prophet 예측
-        future_price = predict_future_price(df, periods=3, freq=freq)
+        future_price = predict_future_price(df, periods=2, freq=freq)
         # ARIMA 예측
-        future_price_arima = predict_future_price_arima(df, periods=3)
+        future_price_arima = predict_future_price_arima(df, periods=2)
         now_price = df['trade_price'].iloc[-1]
         pred_rate = (future_price - now_price) / now_price * 100
         pred_rate_arima = (future_price_arima - now_price) / now_price * 100 if future_price_arima is not None else None
         # XGBoost 예측
-        future_price_xgb = predict_future_price_xgb(df, periods=3, n_lags=5, method='xgb')
+        future_price_xgb = predict_future_price_xgb(df, periods=2, n_lags=5, method='xgb')
         pred_rate_xgb = (future_price_xgb - now_price) / now_price * 100 if future_price_xgb is not None else None
         print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
         print(f"현재가: {now_price:.2f}")
-        print(f"[Prophet] 3캔들 뒤 예측가: {future_price:.2f} / 예측 변화율: {pred_rate:.3f}%")
         if future_price_arima is not None:
-            print(f"[ARIMA]   3캔들 뒤 예측가: {future_price_arima:.2f} / 예측 변화율: {pred_rate_arima:.3f}%")
-        print(f"[XGBoost] 3캔들 뒤 예측가: {future_price_xgb:.2f} / 예측 변화율: {pred_rate_xgb:.3f}%")
-        print(f"상승봉 평균 변화율: {avg_up_rate:.3f}%")
-        print(f"하강봉 평균 변화율: {avg_down_rate:.3f}%")
+            print(f"[ARIMA]   2캔들 뒤 예측가: {future_price_arima:.2f} / 예측 변화율: {pred_rate_arima:.3f}%")
+        print(f"[XGBoost] 2캔들 뒤 예측가: {future_price_xgb:.2f} / 예측 변화율: {pred_rate_xgb:.3f}%")
+        print(f"상승봉 평균 변화율(최근10개): {avg_up_rate:.3f}%")
+        print(f"하강봉 평균 변화율(최근10개): {avg_down_rate:.3f}%")
         # 3. 비교 및 신호 판단 (Prophet 기준, 필요시 ARIMA도 추가)
-        if pred_rate > avg_up_rate:
-            print("예측 변화율이 상승봉 평균 변화율보다 높음 → 강한 매수 신호! (Prophet 기준)")
+        if pred_rate_xgb > avg_up_rate:
+            print("예측 변화율이 상승봉 평균 변화율보다 높음 → 강한 매수 신호! (XGB 기준)")
             trsignal = 'BUY'
-        elif pred_rate < avg_down_rate:
-            print("예측 변화율이 하강봉 평균 변화율보다 낮음 → 강한 매도 신호! (Prophet 기준)")
+        elif pred_rate_xgb < avg_down_rate:
+            print("예측 변화율이 하강봉 평균 변화율보다 낮음 → 강한 매도 신호! (XGB 기준)")
             trsignal = 'SELL'
         else:
-            print("예측 변화율이 평균 변화율 범위 내 → 특별 신호 없음 (Prophet 기준)")
+            print("예측 변화율이 평균 변화율 범위 내 → 특별 신호 없음 (XGB 기준)")
             trsignal = 'HOLD'
-        print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
+        last = df.iloc[-1]
+        last_bb_width = df['bb_width'].iloc[-1]
+        last_bb_width2 = df['bb_width2'].iloc[-1]
+        avg_bb_width_10_pct = avg_bb_width_10 / now_price * 100
+        avg_bb_width_20_pct = avg_bb_width_20 / now_price * 100
+        last_bb_width_pct = last_bb_width / now_price * 100
+        last_bb_width_pct2 = last_bb_width2 / now_price * 100
+        print(f"최근 20개 캔들의 볼린저밴드 평균 폭: {avg_bb_width_20:.2f} ({avg_bb_width_20_pct:.2f}%)")
+        print(f"최근 10개 캔들의 볼린저밴드 평균 폭: {avg_bb_width_10:.2f} ({avg_bb_width_10_pct:.2f}%)")
+        print(f"마지막 캔들의 볼린저밴드 폭: {last_bb_width:.2f} ({last_bb_width_pct:.2f}%)")
+        print(f"마지막 캔들의 볼린저밴드44 폭: {last_bb_width2:.2f} ({last_bb_width_pct2:.2f}%)")
+        if last['trade_price'] >= last['middle']:
+            bollinger_pos = (last['trade_price'] - last['middle']) / (last['upper'] - last['middle']) * 100
+        else:
+            bollinger_pos = (last['trade_price'] - last['middle']) / (last['middle'] - last['lower']) * 100
+
+        print(f"볼린저밴드 내 위치: {bollinger_pos:.2f}% (-100%: 하단, 0%: 중심, +100%: 상단)")
+
+        vwma_last = last['vwma']
+        mavg_last = last['mavg']
+        mavg2_last = last['mavg2']
+
+        if pd.isna(vwma_last) or pd.isna(mavg_last):
+            print("VWMA 또는 볼린저밴드 중간값 계산 불가: 데이터가 부족하거나 결측치가 있습니다.")
+            vwma_vs_mavg_pos = None
+        else:
+            # VWMA가 볼린저밴드 중간값보다 얼마나 위/아래에 있는지 (%)
+            vwma_vs_mavg_pos = (vwma_last - mavg_last) / mavg_last * 100
+            vwma_vs_mavg2_pos = (vwma_last - mavg2_last) / mavg2_last * 100
+            print(f"VWMA: {vwma_last:.2f} / 볼린저밴드 중간값(MA): {mavg_last:.2f}")
+            print(f"VWMA가 볼린저밴드 중간값 대비 {vwma_vs_mavg_pos:.2f}% {'위' if vwma_vs_mavg_pos > 0 else '아래'}에 위치")
+            print(f"VWMA: {vwma_last:.2f} / 볼린저밴드44 중간값(MA): {mavg2_last:.2f}")
+            print(f"VWMA가 볼린저밴드44 중간값 대비 {vwma_vs_mavg2_pos:.2f}% {'위' if vwma_vs_mavg2_pos > 0 else '아래'}에 위치")
+        # VWMA와 현재가의 위치도 같이 출력
+        now_price = last['trade_price']
+        if pd.isna(vwma_last):
+            print("VWMA 계산 불가")
+            price_vs_vwma_pos = None
+        else:
+            price_vs_vwma_pos = (now_price - vwma_last) / vwma_last * 100
+            print(f"현재가가 VWMA 대비 {price_vs_vwma_pos:.2f}% {'위' if price_vs_vwma_pos > 0 else '아래'}에 위치")
         return ticker, avg_up_rate,avg_down_rate,now_price, future_price, future_price_arima, future_price_xgb, pred_rate, pred_rate_arima, pred_rate_xgb
     except Exception as e:
         print("예측 실패:", e)
@@ -217,34 +264,36 @@ def get_upbit_krw_coins():
     krw_coins = [market['market'] for market in markets if market['market'].startswith('KRW-')]
     return krw_coins
 
-
 coin_list = get_upbit_krw_coins()
 
 while True:
     nowt = datetime.datetime.now()
     datetag = nowt.strftime("%Y%m%d%H%M%S")
     print('예측 시간 : ', nowt.strftime("%Y-%m-%d %H:%M:%S"))
-    print("4h~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~4h")
-    for coinn in coin_list:
+    for coinn in ['KRW-OMNI']:
         try:
+            print('예측 시간 : ', nowt.strftime("%Y-%m-%d %H:%M:%S"))
             print("예측코인 :", coinn)
-            fpst = peak_trade(coinn, 1, 20, 200, '4h')
-            intv = '4h'
-            print("4H 예측")
-            add_predictPrice(datetag,fpst[0], fpst[1], fpst[2], fpst[3], fpst[4], fpst[5], fpst[6], 0,fpst[7], fpst[8], fpst[9], 0,intv)
-            fpst = peak_trade(coinn, 1, 20, 200, '30m')
-            intv = '30m'
-            print("30M 예측")
-            add_predictPrice(datetag, fpst[0], fpst[1], fpst[2], fpst[3], fpst[4], fpst[5], fpst[6], 0, fpst[7],
-                             fpst[8], fpst[9], 0, intv)
-            fpst = peak_trade(coinn, 1, 20, 200, '5m')
-            intv = '5m'
-            print("5M 예측")
-            add_predictPrice(datetag, fpst[0], fpst[1], fpst[2], fpst[3], fpst[4], fpst[5], fpst[6], 0, fpst[7],
-                             fpst[8], fpst[9], 0, intv)
+
+            intervals = ['30m', '15m', '5m']
+            for intv in intervals:
+                print(f"{intv} 예측")
+                fpst = peak_trade(coinn, 1, 20, 200, intv)
+                add_predictPrice(datetag, fpst[0], fpst[1], fpst[2], fpst[3], fpst[4], fpst[5], fpst[6], 0, fpst[7], fpst[8], fpst[9], 0, intv)
+                print("------------------------------------------------")
             print(f'{coinn} 예측 완료')
             time.sleep(0.3)
         except Exception as e:
             print(f'<UNK> <UNK>: {e}')
-        print('예측 시간 : ', nowt.strftime("%Y-%m-%d %H:%M:%S"))
-    time.sleep(3600)
+    # === 2분 정각까지 대기 ===
+    now = datetime.datetime.now()
+    # 다음 2분 단위 계산
+    next_minute = (now.minute // 2 + 1) * 2
+    if next_minute == 60:
+        # 1시간 더하기 (timedelta 사용)
+        next_time = (now + datetime.timedelta(hours=1)).replace(minute=0, second=0, microsecond=0)
+    else:
+        next_time = now.replace(minute=next_minute, second=0, microsecond=0)
+    sleep_seconds = (next_time - now).total_seconds()
+    print(f"다음 실행까지 {sleep_seconds:.1f}초 대기")
+    time.sleep(sleep_seconds)
