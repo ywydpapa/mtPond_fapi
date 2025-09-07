@@ -99,6 +99,38 @@ def add_predictPrice(datetag,coinn,aupr,adownr,cprice,pra,prb,prc,prd,rta,rtb,rt
     response = requests.get(url)
     return response
 
+def levenshtein(s1, s2):
+    """레벤슈타인 거리(문자열 유사도)"""
+    if len(s1) < len(s2):
+        return levenshtein(s2, s1)
+    if len(s2) == 0:
+        return len(s1)
+    previous_row = range(len(s2) + 1)
+    for i, c1 in enumerate(s1):
+        current_row = [i + 1]
+        for j, c2 in enumerate(s2):
+            insertions = previous_row[j + 1] + 1
+            deletions = current_row[j] + 1
+            substitutions = previous_row[j] + (c1 != c2)
+            current_row.append(min(insertions, deletions, substitutions))
+        previous_row = current_row
+    return previous_row[-1]
+
+def paa(series, segments=6):
+    """시계열을 segments 개의 구간 평균으로 단순화"""
+    n = len(series)
+    segment_size = n // segments
+    paa_result = [series[i*segment_size:(i+1)*segment_size].mean() for i in range(segments)]
+    return np.array(paa_result)
+
+def sax_transform(paa_vector, alphabet='abcde'):
+    """PAA 벡터를 심볼 문자열로 변환 (알파벳 개수만큼 등분위로 나눔)"""
+    breakpoints = np.percentile(paa_vector, np.linspace(0, 100, len(alphabet)+1)[1:-1])
+    sax_string = ''
+    for val in paa_vector:
+        idx = sum(val > bp for bp in breakpoints)
+        sax_string += alphabet[idx]
+    return sax_string
 
 def peak_trade(
         ticker='KRW-BTC',
@@ -152,6 +184,23 @@ def peak_trade(
     df['prev_price'] = df['trade_price'].shift(1)
     df['change'] = df['trade_price'] - df['prev_price']
     df['rate'] = (df['trade_price'] - df['prev_price']) / df['prev_price']
+    # 패턴 분석
+    segments = 6  # 구간 수(원하는 대로 조정)
+    alphabet = 'abcde'  # 심볼 개수(원하는 대로 조정)
+
+    # 최근 N개의 종가를 PAA + SAX로 변환
+    recent_prices = df['trade_price'].tail(segments * 10)  # 예시: 60개 데이터
+    paa_vec = paa(recent_prices, segments=segments)
+    sax_str = sax_transform(paa_vec, alphabet=alphabet)
+    print(f"SAX 변환 결과: {sax_str}")
+
+    pattern_library = {
+        'morning_star_like': 'cbaabc',
+        'w_shape': 'abccba',
+        'uptrend': 'abcde',
+        'downtrend': 'edcba',
+    }
+
     # 볼린저 밴드 계산 (20기간, 표준편차 2)
     window = 20
     k = 2
@@ -250,7 +299,13 @@ def peak_trade(
         else:
             price_vs_vwma_pos = (now_price - vwma_last) / vwma_last * 100
             print(f"현재가가 VWMA 대비 {price_vs_vwma_pos:.2f}% {'위' if price_vs_vwma_pos > 0 else '아래'}에 위치")
+        for name, pattern in pattern_library.items():
+            dist = levenshtein(sax_str, pattern)
+            print(f"패턴 [{name}]과의 거리: {dist}")
+            if dist <= 2:  # 거리 임계값(조절 가능)
+                print(f"→ {name} 패턴과 유사함!")
         return ticker, avg_up_rate,avg_down_rate,now_price, future_price, future_price_arima, future_price_xgb, pred_rate, pred_rate_arima, pred_rate_xgb
+
     except Exception as e:
         print("예측 실패:", e)
 
@@ -270,7 +325,7 @@ while True:
     nowt = datetime.datetime.now()
     datetag = nowt.strftime("%Y%m%d%H%M%S")
     print('예측 시간 : ', nowt.strftime("%Y-%m-%d %H:%M:%S"))
-    for coinn in ['KRW-OMNI']:
+    for coinn in ['KRW-ADA']:
         try:
             print('예측 시간 : ', nowt.strftime("%Y-%m-%d %H:%M:%S"))
             print("예측코인 :", coinn)

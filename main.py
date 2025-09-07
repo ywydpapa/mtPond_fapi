@@ -367,7 +367,7 @@ async def getmtpondsetups(uno: int, slotno: int, db: AsyncSession = Depends(get_
 
 async def setonoffs(setno:int, yesno:str, db: AsyncSession = Depends(get_db)):
     try:
-        sql = text("UPDATE traceSetup SET activeYN = :yesno where setupNo=:setno AND attrib not like :xattr")
+        sql = text("UPDATE mtPondSetup SET activeYN = :yesno where setupNo=:setno AND attrib not like :xattr")
         await db.execute(sql, {"setno":setno, "yesno":yesno, "xattr":'%XXXUP%'})
         await db.commit()
     except Exception as e:
@@ -402,10 +402,10 @@ async def setautostop(sno:int, yesno:str, db: AsyncSession = Depends(get_db)):
     except Exception as e:
         print('자동 멈춤 기능 설정 오류', e)
 
-async def setlconoff(setno:int, srate:float, yesno:float, db: AsyncSession = Depends(get_db)):
+async def setlconoff(setno:int, lcrate:float, yesno:str, db: AsyncSession = Depends(get_db)):
     try:
-        sql = text("UPDATE traceSetup SET bidRate = :brate, askRate = :srate where setupNo=:setno")
-        await db.execute(sql, {"brate":yesno, "srate":srate, "setno":setno})
+        sql = text("UPDATE mtPondSetup SET losscut = :lcrate, lcYN = :yesno where setupNo=:setno")
+        await db.execute(sql, {"lcrate":lcrate, "yesno":yesno, "setno":setno})
         await db.commit()
     except Exception as e:
         print('손절 ONOFF 오류', e)
