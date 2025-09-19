@@ -24,26 +24,7 @@
                     <div class="card-body">
                         <div class="table-responsive">
                             <form action="/setupmtponds" method="post"
-                                  onsubmit="return confirm('설정내용을 저장하시겠습니까? 설정하지 않은 코인은 무작위로 설정됩니다.');">
-                                <label for="tabindex">슬롯 설정 (설정하고자 하는 슬롯을 선택해 주십시오!!)</label>
-                                <select class="form-control" name="tabindex" id="tabindex">
-                                    {% if trcnt >= 3 %}
-                                        <option value="1">Slot 1</option>
-                                    {% endif %}
-                                    {% if trcnt >= 6 %}
-                                        <option value="2">Slot 2</option>
-                                    {% endif %}
-                                    {% if trcnt >= 9 %}
-                                        <option value="3">Slot 3</option>
-                                    {% endif %}
-                                    {% if trcnt >= 12 %}
-                                        <option value="4">Slot 4</option>
-                                    {% endif %}
-                                    {% if trcnt >= 15 %}
-                                        <option value="5">Slot 5</option>
-                                    {% endif %}
-                                </select>
-                                <br>
+                                  onsubmit="return confirm('설정내용을 저장하시겠습니까?');">
                                 <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
                                     <colgroup>
                                         <col width="20%"/>
@@ -51,57 +32,6 @@
                                         <col width="30%"/>
                                         <col width="20%"/>
                                     </colgroup>
-                                    <thead>
-                                    <tr>
-                                        <td style="text-align: center"><h5>선택 코인1</h5></td>
-                                        <td colspan="2"><select id="coinn1" name="coinn1"
-                                                                class="form-control selectpicker"
-                                                                data-live-search="true">
-                                                    <option value="">코인은 자동으로 선택됩니다.</option>
-                                            {% for coin in coinlist %}
-                                                {% if (coin != "KRW-SHIB") and (coin != "KRW-PEPE") and (coin != "KRW-BTT") and (coin != "KRW-BONK") and (coin != "KRW-XEC") %}
-                                                    <option value="{{ coin }}"
-                                                            {% if coin==coinn %}selected{% endif %}>{{ coin }}</option>
-                                                {% endif %}
-                                            {% endfor %}</select></td>
-                                        <td style="text-align: center">
-                                            <div style="display: inline-block">
-                                                <button type="submit" value="submit" id="savebtn"
-                                                        class="form-control btn btn-google">매매 설정 저장
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td style="text-align: center"><h5>선택 코인2</h5></td>
-                                        <td colspan="2"><select id="coinn2" name="coinn2"
-                                                                class="form-control selectpicker"
-                                                                data-live-search="true">
-                                            <option value="">코인은 자동으로 선택됩니다.</option>
-                                            {% for coin in coinlist %}
-                                                {% if (coin != "KRW-SHIB") and (coin != "KRW-PEPE") and (coin != "KRW-BTT") and (coin != "KRW-BONK") and (coin != "KRW-XEC") %}
-                                                    <option value="{{ coin }}"
-                                                            {% if coin==coinn %}selected{% endif %}>{{ coin }}</option>
-                                                {% endif %}
-                                            {% endfor %}</select></td>
-                                        <td style="text-align: center">
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td style="text-align: center"><h5>선택 코인3</h5></td>
-                                        <td colspan="2"><select id="coinn3" name="coinn3"
-                                                                class="form-control selectpicker"
-                                                                data-live-search="true">
-                                            <option value="">코인은 자동으로 선택됩니다.</option>
-                                            {% for coin in coinlist %}
-                                                {% if (coin != "KRW-SHIB") and (coin != "KRW-PEPE") and (coin != "KRW-BTT") and (coin != "KRW-BONK") and (coin != "KRW-XEC") %}
-                                                    <option value="{{ coin }}"
-                                                            {% if coin==coinn %}selected{% endif %}>{{ coin }}</option>
-                                                {% endif %}
-                                            {% endfor %}</select></td>
-                                        <td style="text-align: center">
-                                        </td>
-                                    </tr>
                                     <tr>
                                         <td style="text-align: center"><h5>시작 매수 금액 </h5></td>
                                         <td colspan="2">
@@ -113,14 +43,9 @@
                                         <td style="text-align: center"><input type="hidden" name="setkey" value="{{ setkey }}">
                                             <input type="hidden" name="userno" value="{{ user_No }}">
                                             <input type="hidden" name="svrno" value="{{ server_No }}">
-                                            <div class="row" style="display: inline-block">
-                                                <div style="display: inline-block">
-                                                </div>
-                                            </div>
-                                            <label for="minmargin" style="margin-bottom: 0;">최소이윤</label><input type="number" id="minmargin" name="minmargin" min="0.15" max="100" value="0.5" step="0.01" style="text-align: right; width: 60px;"><span>%</span>
+                                            <button type="submit" class="form-control btn-primary" value="submit" id="savebtn">설정저장</button>
                                         </td>
                                     </tr>
-                                    </thead>
                                     <tr>
                                         <td style="text-align: center"><h5>추가 매수 금액 </h5></td>
                                         <td colspan="2">
@@ -130,12 +55,6 @@
                                                    oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');"/>
                                         </td>
                                         <td style="text-align: center">
-                                                    <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
-                                                        <input type="checkbox" id="lcchk" name="lcchk" checked>
-                                                        <label for="lcchk" style="margin-bottom: 0;">손절적용</label>
-                                                        <input type="number" id="lcrate" name="lcrate" min="-10.0" max="0" value="-3.0" step="0.01" style="text-align: right; width: 60px;">
-                                                        <span>%</span>
-                                                    </div>
                                         </td>
                                     </tr>
                                     <tr>
@@ -150,7 +69,17 @@
                                                 <option value="5000000">5,000,000</option>
                                             </select>
                                         </td>
-                                        <td style="text-align: center"><input type="checkbox" id="limityn" name="limityn"><label for="doublechk">한계금액적용</label></td>
+                                        <td style="text-align: center"></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="text-align: center"><h5>최소이윤</h5></td>
+                                        <td colspan="2"><input type="number" id="minmargin" name="minmargin" min="0.15" max="100" value="0.5" step="0.01" style="text-align: right; width: 60px;"><span>%</span></td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="text-align: center"><h5>손절시작</h5></td>
+                                        <td colspan="2"><input type="number" id="lcrate" name="lcrate" min="-10.0" max="0" value="-3.0" step="0.01" style="text-align: right; width: 60px;"><span>%</span></td>
+                                        <td></td>
                                     </tr>
                                 </table>
                             </form>
