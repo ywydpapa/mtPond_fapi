@@ -50,7 +50,7 @@
                                         <td style="text-align: center"><h5>추가 매수 금액 </h5></td>
                                         <td colspan="2">
                                             <input id="addprice" name="addprice" class="form-control" type="text"
-                                                   value="200000" max="1000000" placeholder="200,000"
+                                                   value="40000" max="100000" placeholder="40,000"
                                                    style="text-align: right"
                                                    oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');"/>
                                         </td>
@@ -60,14 +60,7 @@
                                     <tr>
                                         <td style="text-align: center"><h5>투자 한계 금액(각 코인별)</h5></td>
                                         <td colspan="2">
-                                            <select id="limitamt" name="limitamt" class="form-control"
-                                                    style="text-align: right">
-                                                <option value="1000000" selected>1,000,000</option>
-                                                <option value="2000000">2,000,000</option>
-                                                <option value="3000000">3,000,000</option>
-                                                <option value="4000000">4,000,000</option>
-                                                <option value="5000000">5,000,000</option>
-                                            </select>
+                                            <input id="limitamt" name="limitamt" class="form-control" min="10000" max="1000000" value="400000" step="100000" style="text-align: right">
                                         </td>
                                         <td style="text-align: center"></td>
                                     </tr>
@@ -94,7 +87,7 @@
         <footer class="sticky-footer bg-white">
             <div class="container my-auto">
                 <div class="copyright text-center my-auto">
-                    <span>Copyright &copy; K3 Labs 2025</span>
+                    <span>Copyright &copy; Coredjk 2025</span>
                 </div>
             </div>
         </footer>
