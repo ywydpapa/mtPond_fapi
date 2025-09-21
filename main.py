@@ -134,7 +134,19 @@ async def detailuser(uno:int, db: AsyncSession = Depends(get_db)):
     row = None
     try:
         sql = text("SELECT * FROM traceUser WHERE userNo = :userno and attrib NOT LIKE :xattr")
-        result = db.execute(sql, {"userno":uno,"xattr": "%XXXUP%"})
+        result = await db.execute(sql, {"userno":uno,"xattr": "%XXXUP%"})
+        row = result.fetchone()
+    except Exception as e:
+        print('접속오류', e)
+    finally:
+        return row
+
+
+async def get_onoff(uno:int, db: AsyncSession = Depends(get_db)):
+    row = None
+    try:
+        sql = text("SELECT activeYN FROM mtSetup WHERE userNo = :userno and attrib NOT LIKE :xattr")
+        result = await db.execute(sql, {"userno":uno,"xattr": "%XXXUP%"})
         row = result.fetchone()
     except Exception as e:
         print('접속오류', e)
@@ -364,11 +376,18 @@ async def getmtpondsetups(uno: int, slotno: int, db: AsyncSession = Depends(get_
         return False
 
 
-
 async def setonoffs(setno:int, yesno:str, db: AsyncSession = Depends(get_db)):
     try:
         sql = text("UPDATE mtPondSetup SET activeYN = :yesno where setupNo=:setno AND attrib not like :xattr")
         await db.execute(sql, {"setno":setno, "yesno":yesno, "xattr":'%XXXUP%'})
+        await db.commit()
+    except Exception as e:
+        print('거래 ON/OFF 오류', e)
+
+async def setonoff(uno:int, yesno:str, db: AsyncSession = Depends(get_db)):
+    try:
+        sql = text("UPDATE mtSetup SET activeYN = :yesno where userNo=:userno AND attrib not like :xattr")
+        await db.execute(sql, {"userno":uno, "yesno":yesno, "xattr":'%XXXUP%'})
         await db.commit()
     except Exception as e:
         print('거래 ON/OFF 오류', e)
@@ -769,7 +788,8 @@ async def mymtpondstat(request:Request ,userno:int,setkey:str,user_session: int 
         userName = request.session.get("user_Name")
         userRole = request.session.get("user_Role")
         userLicense = request.session.get("License")
-        return templates.TemplateResponse('/trade/mypondmain.html', {"request":request, "user_No":userno,"user_Name":userName, "user_Role":userRole ,"setkey":setkey,"license":userLicense})
+        onoffstat = await get_onoff(userno, db)
+        return templates.TemplateResponse('/trade/mypondmain.html', {"request":request, "user_No":userno,"user_Name":userName, "user_Role":userRole ,"setkey":setkey,"license":userLicense, "onoffstat":onoffstat[0] })
     except Exception as e:
         print("mtPond 트레이딩 상태 불러오기 에러",e)
 
@@ -1125,3 +1145,11 @@ async def mtpondsetup_all(userno: int, db: AsyncSession = Depends(get_db)):
     rows = result.fetchall()
     data = [dict(r._mapping) for r in rows]
     return jsonable_encoder(data)
+
+@app.post("/api/mtpondsetonoff/{userno}/{active}")
+async def toggle_active_simple(userno: int, active: str, db: AsyncSession = Depends(get_db)):
+    active_norm = active.strip().upper()
+    if active_norm not in ("Y", "N"):
+        raise HTTPException(status_code=400, detail="active 값은 Y 또는 N 이어야 합니다.")
+    await setonoff(userno, active_norm, db)
+    return {"userNo": userno, "activeYN": active_norm, "updated": True}

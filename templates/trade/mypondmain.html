@@ -3,6 +3,69 @@
 <head>
     {% include '/comm/adheader.html' %}
 <body id="page-top">
+<style>
+.trade-toggle {
+    user-select: none;
+}
+
+.toggle-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-label {
+    position: relative;
+    display: inline-block;
+    width: 54px;
+    height: 28px;
+    background: #cfd4da;
+    border-radius: 28px;
+    cursor: pointer;
+    transition: background .25s;
+    margin: 0;
+}
+
+.toggle-label .toggle-handle {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 22px;
+    height: 22px;
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0,0,0,.25);
+    transition: transform .25s;
+}
+
+.toggle-input:focus + .toggle-label {
+    outline: 2px solid #80bdff;
+    outline-offset: 2px;
+}
+
+.toggle-input:checked + .toggle-label {
+    background: linear-gradient(90deg,#4e73df,#1cc88a);
+}
+
+.toggle-input:checked + .toggle-label .toggle-handle {
+    transform: translateX(26px);
+}
+
+.toggle-state-text {
+    font-weight: 600;
+    font-size: 0.9rem;
+    width: 38px;
+    text-align: left;
+    color: #6c757d;
+    transition: color .25s;
+}
+
+.toggle-input:checked ~ .toggle-state-text {
+    color: #1cc88a;
+}
+</style>
+
 <!-- Page Wrapper -->
 <div id="wrapper">
     {% include '/comm/sidebar.html' %}
@@ -13,6 +76,16 @@
             {% include '/comm/adtopbar.html' %}
             <!-- Begin Page Content -->
             <div class="container-fluid">
+                    <div class="card-header py-3 d-flex align-items-center justify-content-between">
+                        <h6 class="m-0 font-weight-bold text-primary mb-0">거래시작</h6>
+                            <div class="trade-toggle d-flex align-items-center gap-2">
+                                <input type="checkbox" id="chk1" class="toggle-input" {% if onoffstat == 'Y' %}checked{% endif %}/>
+                                <label for="chk1" class="toggle-label" aria-label="거래 시작 토글">
+                                <span class="toggle-handle"></span>
+                                </label>
+                                <span id="chk1-state" class="toggle-state-text mb-0">  OFF</span>
+                            </div>
+                    </div>
                 <!-- Page Heading -->
                 <div class="row">
                     <div class="col-lg-4">
@@ -404,10 +477,28 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 });
+
+$('#chk1').on('change', function() {
+    const userno = {{ user_No  }};
+    const active = this.checked ? 'Y' : 'N';
+    const $toggle = $(this);
+    $toggle.prop('disabled', true);
+    $.ajax({
+        url: `/api/mtpondsetonoff/${userno}/${active}`,
+        method: 'POST',
+        success: function(res){
+            $('#chk1-state').text(active ? 'ON' : 'OFF');
+        },
+        error: function(){
+            alert('업데이트 실패');
+            $toggle.prop('checked', !active);
+        },
+        complete: function(){
+            $toggle.prop('disabled', false);
+        }
+    });
+});
+
 </script>
-
-
 </body>
 </html>
-
-
