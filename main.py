@@ -1106,8 +1106,9 @@ async def upbittop30(request:Request,uno:int,setkey:str,db: AsyncSession = Depen
                                        "server_No": serverno})
 
 @app.get('/api/mtpondsetup/{userno}')
-async def mtpondsetup(request:Request,userno:int,db: AsyncSession = Depends(get_db)):
-    sql = text("select * from mtSetup where userNo = :userno and attrib not like :attrib")
-    setup = await db.execute(sql, {"userno": userno, "attrib": "%XXX%"})
-    setup = setup.fetchone()
-    return JSONResponse({"success": True, "data": setup})
+async def mtpondsetup_all(userno: int, db: AsyncSession = Depends(get_db)):
+    sql = text("SELECT activeYN,initAmt,addAmt,limitAmt,minMargin,maxMargin,tickRate,tickYN,lcRate,lcGap,maxCoincnt FROM mtSetup WHERE userNo = :userno AND attrib NOT LIKE :attrib")
+    result = await db.execute(sql, {"userno": userno, "attrib": "%XXX%"})
+    rows = result.fetchall()
+    data = [dict(r._mapping) for r in rows]
+    return jsonable_encoder(data)
