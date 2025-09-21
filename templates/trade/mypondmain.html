@@ -14,22 +14,10 @@
             <!-- Begin Page Content -->
             <div class="container-fluid">
                 <!-- Page Heading -->
-                <ul class="nav nav-pills">
-                    {% set slots = [(1,3),(2,6),(3,9),(4,12),(5,15)] %}
-                    {% for num, threshold in slots %}
-                    {% if license >= threshold %}
-                    <li class="nav-item">
-                        <a class="nav-link {% if slot == num %}active{% endif %}"
-                           href="/mymtpondstat/{{ user_No }}/{{ setkey }}/{{ num }}">SLOT {{ '%02d' % num }}</a>
-                    </li>
-                    {% endif %}
-                    {% endfor %}
-                </ul>
                 <div class="row">
                     <div class="col-lg-4">
                         <div class="card ">
                             <div class="card-header py-3">
-                                <h6 class="m-0 font-weight-bold text-primary">설정내용 1 </h6>
                             </div>
                             <div class="card-body">
                                 <div class="table-responsive">
@@ -43,66 +31,12 @@
                                             </td>
                                         </tr>
                                         <tr>
-                                            <td style="text-align: center">시작금액/한도금액</td>
-                                            <td id="initamount" style="text-align: right">{{ "{:,}".format(setups[0][3]) }}원 / {{ "{:,}".format(setups[0][5]) }}원
-                                            </td>
-                                        </tr>
-                                        <tr>
                                             <td style="text-align: center">현재가/(매수액/매도액)</td>
                                             <td>
                                                 <div style="display: flex; width: 100%; text-align: right;">
                                                     <span id="curtrade1-price" style="flex: 1;"></span>
                                                     <span id="curtrade1-bid" style="flex: 1; border-left: 1px solid #eee; border-right: 1px solid #eee; color: green;"></span>
                                                     <span id="curtrade1-ask" style="flex: 1; color: blue;"></span>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        <tr style="display: none">
-                                            <td style="text-align: center">추가매수설정</td>
-                                            <td style="text-align: right"></td>
-                                        </tr>
-                                        <tr>
-                                            <td style="text-align: center">거래설정</td>
-                                            <td style="text-align: right">
-                                                <div class="d-flex" style="gap: 1.5rem;">
-                                                    <div class="custom-control custom-switch flex-fill text-center">
-                                                        <input class="custom-control-input" type="checkbox"
-                                                               id="autochg1" name="autochg1" checked/>
-                                                        <label class="custom-control-label" for="autochg1">자동전환</label>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td style="text-align: center">손절설정</td>
-                                            <td class="align-items-center">
-                                                <div class="d-flex align-items-center justify-content-center"
-                                                     style="gap: 12px;">
-                                                    <div class="custom-control custom-switch">
-                                                        <input class="custom-control-input" type="checkbox" id="chklc1"
-                                                               name="chklc1" {% if setups[0][12]== 'on' %}checked{%
-                                                        endif %} />
-                                                        <label class="custom-control-label" for="chklc1"></label>
-                                                    </div>
-                                                    <input class="form-control-sm"
-                                                           style="text-align: right; border: #717384" type="number"
-                                                           name="lcrate1" id="lcrate1" value="{{ setups[0][9] }}"
-                                                           max="-1.5" min="-10" step="0.1"/>
-                                                    <label class="form-control-sm" for="lcrate1"
-                                                           style="margin-bottom: 0;">%</label>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td style="text-align: center">동작상태</td>
-                                            <td style="text-align: center">
-                                                <div class="custom-control custom-switch">
-                                                    <h4>
-                                                        <input style="zoom: 150%;" type="checkbox"
-                                                               class="custom-control-input" id="chk1" name="chk1" {% if
-                                                               setups[0][11]== 'Y' %}checked{% endif %} />
-                                                        <label class="custom-control-label" for="chk1">on/off</label>
-                                                    </h4>
                                                 </div>
                                             </td>
                                         </tr>
@@ -115,7 +49,6 @@
                     <div class="col-lg-4">
                         <div class="card ">
                             <div class="card-header py-3">
-                                <h6 class="m-0 font-weight-bold text-primary">설정내용 2 </h6>
                             </div>
                             <div class="card-body">
                                 <div class="table-responsive">
@@ -129,66 +62,12 @@
                                             </td>
                                         </tr>
                                         <tr>
-                                            <td style="text-align: center">시작금액/한도금액</td>
-                                            <td id="initamount2" style="text-align: right">{{ "{:,}".format(setups[1][3]) }}원 / {{ "{:,}".format(setups[1][5]) }}원
-                                            </td>
-                                        </tr>
-                                        <tr>
                                             <td style="text-align: center">현재가/(매수액/매도액)</td>
                                             <td>
                                                 <div style="display: flex; width: 100%; text-align: right;">
                                                     <span id="curtrade2-price" style="flex: 1;"></span>
                                                     <span id="curtrade2-bid" style="flex: 1; border-left: 1px solid #eee; border-right: 1px solid #eee; color: green;"></span>
                                                     <span id="curtrade2-ask" style="flex: 1; color: blue;"></span>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        <tr style="display: none">
-                                            <td style="text-align: center">추가매수설정</td>
-                                            <td style="text-align: right"></td>
-                                        </tr>
-                                        <tr>
-                                            <td style="text-align: center">거래설정</td>
-                                            <td style="text-align: right">
-                                                <div class="d-flex" style="gap: 1.5rem;">
-                                                    <div class="custom-control custom-switch flex-fill text-center">
-                                                        <input class="custom-control-input" type="checkbox"
-                                                               id="autochg2" name="autochg2" checked/>
-                                                        <label class="custom-control-label" for="autochg2">자동전환</label>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td style="text-align: center">손절설정</td>
-                                            <td class="align-items-center">
-                                                <div class="d-flex align-items-center justify-content-center"
-                                                     style="gap: 12px;">
-                                                    <div class="custom-control custom-switch">
-                                                        <input class="custom-control-input" type="checkbox" id="chklc2"
-                                                               name="chklc1" {% if setups[1][12]== 'on' %}checked{%
-                                                        endif %} />
-                                                        <label class="custom-control-label" for="chklc2"></label>
-                                                    </div>
-                                                    <input class="form-control-sm"
-                                                           style="text-align: right; border: #717384" type="number"
-                                                           name="lcrate2" id="lcrate2" value="{{ setups[1][9] }}"
-                                                           max="-1.5" min="-10" step="0.1"/>
-                                                    <label class="form-control-sm" for="lcrate1"
-                                                           style="margin-bottom: 0;">%</label>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td style="text-align: center">동작상태</td>
-                                            <td style="text-align: center">
-                                                <div class="custom-control custom-switch">
-                                                    <h4>
-                                                        <input style="zoom: 150%;" type="checkbox"
-                                                               class="custom-control-input" id="chk2" name="chk2" {% if
-                                                               setups[1][11]== 'Y' %}checked{% endif %} />
-                                                        <label class="custom-control-label" for="chk2">on/off</label>
-                                                    </h4>
                                                 </div>
                                             </td>
                                         </tr>
@@ -201,7 +80,6 @@
                     <div class="col-lg-4">
                         <div class="card ">
                             <div class="card-header py-3">
-                                <h6 class="m-0 font-weight-bold text-primary">설정내용 3 </h6>
                             </div>
                             <div class="card-body">
                                 <div class="table-responsive">
@@ -215,66 +93,12 @@
                                             </td>
                                         </tr>
                                         <tr>
-                                            <td style="text-align: center">시작금액/한도금액</td>
-                                            <td id="initamount3" style="text-align: right">{{ "{:,}".format(setups[2][3]) }}원 / {{ "{:,}".format(setups[2][5]) }}원
-                                            </td>
-                                        </tr>
-                                        <tr>
                                             <td style="text-align: center">현재가/(매수액/매도액)</td>
                                             <td>
                                                 <div style="display: flex; width: 100%; text-align: right;">
                                                     <span id="curtrade3-price" style="flex: 1;"></span>
                                                     <span id="curtrade3-bid" style="flex: 1; border-left: 1px solid #eee; border-right: 1px solid #eee; color: green;"></span>
                                                     <span id="curtrade3-ask" style="flex: 1; color: blue;"></span>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        <tr style="display: none">
-                                            <td style="text-align: center">추가매수설정</td>
-                                            <td style="text-align: right"></td>
-                                        </tr>
-                                        <tr>
-                                            <td style="text-align: center">거래설정</td>
-                                            <td style="text-align: right">
-                                                <div class="d-flex" style="gap: 1.5rem;">
-                                                    <div class="custom-control custom-switch flex-fill text-center">
-                                                        <input class="custom-control-input" type="checkbox"
-                                                               id="autochg3" name="autochg3" checked/>
-                                                        <label class="custom-control-label" for="autochg3">자동전환</label>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td style="text-align: center">손절설정</td>
-                                            <td class="align-items-center">
-                                                <div class="d-flex align-items-center justify-content-center"
-                                                     style="gap: 12px;">
-                                                    <div class="custom-control custom-switch">
-                                                        <input class="custom-control-input" type="checkbox" id="chklc3"
-                                                               name="chklc1" {% if setups[2][12]== 'on' %}checked{%
-                                                        endif %} />
-                                                        <label class="custom-control-label" for="chklc3"></label>
-                                                    </div>
-                                                    <input class="form-control-sm"
-                                                           style="text-align: right; border: #717384" type="number"
-                                                           name="lcrate1" id="lcrate3" value="{{ setups[2][9] }}"
-                                                           max="-1.5" min="-10" step="0.1"/>
-                                                    <label class="form-control-sm" for="lcrate3"
-                                                           style="margin-bottom: 0;">%</label>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td style="text-align: center">동작상태</td>
-                                            <td style="text-align: center">
-                                                <div class="custom-control custom-switch">
-                                                    <h4>
-                                                        <input style="zoom: 150%;" type="checkbox"
-                                                               class="custom-control-input" id="chk3" name="chk3" {% if
-                                                               setups[2][11]== 'Y' %}checked{% endif %} />
-                                                        <label class="custom-control-label" for="chk3">on/off</label>
-                                                    </h4>
                                                 </div>
                                             </td>
                                         </tr>
@@ -333,15 +157,6 @@
                     </div>
                 </div>
                 <!-- DataTales Example -->
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">거래현황</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                        </div>
-                    </div>
-                </div>
             </div>
             <!-- /.container-fluid -->
         </div>

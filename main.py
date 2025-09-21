@@ -428,7 +428,16 @@ async def erasebid(uno:int, setkey:str, tabindex:int, db: AsyncSession = Depends
     except Exception as e:
         return False
 
-async def erasemtpondsetup(uno:int, setkey:str, slot:int, db: AsyncSession = Depends(get_db)):
+async def erasemtpondsetup(uno:int, setkey:str, db: AsyncSession = Depends(get_db)):
+    try:
+        sql1 = text("update mtSetup set attrib=:xattr where userNo=:userno")
+        await db.execute(sql1, {"xattr": "XXXUPXXXUP", "userno": uno})
+        await db.commit()
+        return True
+    except Exception as e:
+        return False
+
+async def erasemtpondsetup_backup(uno:int, setkey:str, slot:int, db: AsyncSession = Depends(get_db)):
     try:
         start_slot = (slot - 1) * 3 + 1
         for tabindex in range(start_slot, start_slot + 3):
@@ -438,7 +447,6 @@ async def erasemtpondsetup(uno:int, setkey:str, slot:int, db: AsyncSession = Dep
         return True
     except Exception as e:
         return False
-
 
 async def update_userdtl(uno:int, key1:str , key2:str, svrno:int ,db: AsyncSession = Depends(get_db)):
     try:
@@ -472,7 +480,25 @@ async def setupbid(uno:int, setkey:str, initbid:float, bidstep:int, bidrate:floa
     else:
         return False
 
-async def setupmymtpondset(uno:int, setkey:str, slot:int, initbid:float, addbid:float, limitbid:float, minmargin:float, cutrate:float, lcyn:str, svrno:int,  db: AsyncSession = Depends(get_db)):
+async def setupmymtpondset(uno:int, setkey:str, initbid:float, addbid:float, limitbid:float, minmargin:float, cutrate:float,  db: AsyncSession = Depends(get_db)):
+    chkkey = await check_setkey(uno, setkey, db)
+    if chkkey is True:
+        try:
+            sql = text("""
+                insert into mtSetup (userNo,initAmt,addAmt,limitAmt,minMargin,lcRate)
+                VALUES (:userNo, :iniBid , :addBid, :limitBid, :minMargin, :losscut)
+            """)
+            await db.execute(sql, {
+                "userNo": uno,"iniBid": initbid,"addBid": addbid,"limitBid": limitbid, "minMargin":minmargin, "losscut":cutrate})
+            await db.commit()
+            return True
+        except Exception as e:
+            print('mtPond 트레이딩 설정 저장 오류', e)
+            return False
+    else:
+        return False
+
+async def setupmymtpondset_backup(uno:int, setkey:str, slot:int, initbid:float, addbid:float, limitbid:float, minmargin:float, cutrate:float, lcyn:str, svrno:int,  db: AsyncSession = Depends(get_db)):
     chkkey = await check_setkey(uno, setkey, db)
     if chkkey is True:
         try:
@@ -737,16 +763,13 @@ async def mytradestat(request:Request ,userno:int,setkey:str,slot:int,user_sessi
         print("트레이딩 상태 불러오기 에러",e)
 
 
-@app.get('/mymtpondstat/{userno}/{setkey}/{slot}')
-async def mymtpondstat(request:Request ,userno:int,setkey:str,slot:int,user_session: int = Depends(require_login), db: AsyncSession = Depends(get_db)):
+@app.get('/mymtpondstat/{userno}/{setkey}')
+async def mymtpondstat(request:Request ,userno:int,setkey:str,user_session: int = Depends(require_login), db: AsyncSession = Depends(get_db)):
     try:
-        setups = await getmtpondsetups(userno, slot, db)
         userName = request.session.get("user_Name")
         userRole = request.session.get("user_Role")
         userLicense = request.session.get("License")
-        mycoins = await checkwallet(userno, setkey, db)
-        orderlist = await get_orderlist(userno, setkey, slot, db)
-        return templates.TemplateResponse('/trade/mypondmain.html', {"request":request, "setups":setups, "user_No":userno,"user_Name":userName, "user_Role":userRole ,"setkey":setkey,"license":userLicense,"mycoins" :mycoins, "slot":slot, "orderlist":orderlist })
+        return templates.TemplateResponse('/trade/mypondmain.html', {"request":request, "user_No":userno,"user_Name":userName, "user_Role":userRole ,"setkey":setkey,"license":userLicense})
     except Exception as e:
         print("mtPond 트레이딩 상태 불러오기 에러",e)
 
@@ -850,33 +873,23 @@ async def setupmybids(
 @app.post("/setupmtponds")
 async def setupmtponds(
     userno: str = Form(...),
-    tabindex: str = Form(...),
     initprice: str = Form(...),
     addprice: str = Form(...),
+    limitamt: str = Form(...),
     minmargin: str = Form(...),
     lcrate: Optional[str] = Form(None),
-    lcchk: Optional[str] = Form(None),
     setkey: str = Form(...),
-    svrno: str = Form(...),
-    limityn: Optional[str] = Form(None),
-    limitamt: Optional[str] = Form(None),
         db: AsyncSession = Depends(get_db),
 ):
     uno = int(userno)
-    slot = int(tabindex)
-    price = initprice.replace(',', '') if initprice else ''
-    addprice = initprice.replace(',', '') if addprice else ''
+    initprice = initprice.replace(',', '') if initprice else '0'
+    addprice = addprice.replace(',', '') if addprice else '0'
+    limitamt = limitamt.replace(',','') if limitamt else '0'
     lcrate = lcrate or '0'
-    lcchk_val = lcchk
     minmargin = minmargin.replace(',', '') if minmargin else ''
-    dyn = 'Y' if limityn == 'on' else 'N'
-    limityn_value = 'Y' if limityn == 'on' else 'N'
-    lmtamt = (limitamt or '').replace(',', '') if limitamt else ''
-    await erasemtpondsetup(uno, setkey, slot, db)
-    start_slot = (slot - 1) * 3 + 1
-    for slotno in range(start_slot, start_slot + 3):
-        await setupmymtpondset(uno, setkey, slotno, price, addprice, lmtamt, minmargin, lcrate, lcchk, svrno, db)
-    return RedirectResponse(url=f"/mymtpondstat/{uno}/{setkey}/{slot}", status_code=303)
+    await erasemtpondsetup(uno, setkey,db)
+    await setupmymtpondset(uno, setkey, initprice, addprice, limitamt, minmargin, lcrate,db)
+    return RedirectResponse(url=f"/mymtpondstat/{uno}/{setkey}", status_code=303)
 
 @app.post("/setupbid")
 async def setupmybid(
