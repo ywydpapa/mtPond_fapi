@@ -146,7 +146,7 @@ async def get_onoff(uno:int, db: AsyncSession = Depends(get_db)):
     row = None
     try:
         sql = text("SELECT activeYN FROM mtSetup WHERE userNo = :userno and attrib NOT LIKE :xattr")
-        result = await db.execute(sql, {"userno":uno,"xattr": "%XXXUP%"})
+        result = await db.execute(sql, {"userno":uno,"xattr": "%XXX%"})
         row = result.fetchone()
     except Exception as e:
         print('접속오류', e)
