@@ -1104,3 +1104,10 @@ async def upbittop30(request:Request,uno:int,setkey:str,db: AsyncSession = Depen
     coins = pyupbit.get_tickers(fiat="KRW")
     return templates.TemplateResponse('/trade/upbittop30.html', {"request": request, "trcnt": trcnt, "user_Name": userName, "setkey": setkey, "user_No": uno, "user_Role": userRole, "coins":coins ,
                                        "server_No": serverno})
+
+@app.get('/api/mtpondsetup/{userno}')
+async def mtpondsetup(request:Request,userno:int,db: AsyncSession = Depends(get_db)):
+    sql = text("select * from mtSetup where userNo = :userno and attrib not like :attrib")
+    setup = await db.execute(sql, {"userno": userno, "attrib": "%XXX%"})
+    setup = setup.fetchone()
+    return JSONResponse({"success": True, "data": setup})
