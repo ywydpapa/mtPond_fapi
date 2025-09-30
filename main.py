@@ -216,11 +216,46 @@ async def getKeys(uno:int,setkey:str, db: AsyncSession = Depends(get_db)):
     finally:
         return key1, key2
 
+async def api_getKeys(uno:int,db: AsyncSession = Depends(get_db)):
+    global key1, key2
+    key1 = None
+    key2 = None
+    try:
+        sql = text("SELECT apiKey1, apiKey2 FROM traceUser WHERE userNo=:userno and attrib not like :xattr")
+        result = await db.execute(sql, {"userno":uno,"xattr": "%XXXUP%"})
+        keys = result.fetchone()
+        if len(keys) == 0:
+            print("No available Keys !!")
+        else:
+            key1 = keys[0]
+            key2 = keys[1]
+    except Exception as e:
+        print('키로드 오류')
+        return False
+    finally:
+        return key1, key2
+
 async def checkwallet(uno:int, setkey:str, db: AsyncSession = Depends(get_db)):
     global key1, key2, walletitems
     walletitems = []
     try:
         keys = await getKeys(uno,setkey,db)
+        key1 = keys[0]
+        key2 = keys[1]
+        upbit = pyupbit.Upbit(key1, key2)
+        walletitems = upbit.get_balances()
+    except Exception as e:
+        print("지갑 불러오기 에러", e)
+        return False
+    finally:
+        return walletitems
+
+
+async def api_checkwallet(uno:int, db: AsyncSession = Depends(get_db)):
+    global key1, key2, walletitems
+    walletitems = []
+    try:
+        keys = await api_getKeys(uno,db)
         key1 = keys[0]
         key2 = keys[1]
         upbit = pyupbit.Upbit(key1, key2)
@@ -254,9 +289,43 @@ async def buycoinmarket(uno, coink, setkey, amt, db: AsyncSession = Depends(get_
         print("시장가 구매 에러",e)
         return False
 
+async def api_buycoinmarket(uno, coink, amt, db: AsyncSession = Depends(get_db)):
+    try:
+        keys = await api_getKeys(uno,db)
+        key1 = keys[0]
+        key2 = keys[1]
+        upbit = pyupbit.Upbit(key1, key2)
+        buy = upbit.buy_market_order(coink, amt)
+        return buy
+    except Exception as e:
+        print("시장가 구매 에러",e)
+        return False
+
 async def sellcoinpercent(uno, coink, setkey, volm, db: AsyncSession = Depends(get_db)):
     try:
         keys = await getKeys(uno, setkey, db)
+        key1 = keys[0]
+        key2 = keys[1]
+        upbit = pyupbit.Upbit(key1, key2)
+        walt = upbit.get_balances() #지갑내 잔고 확보
+        crp = pyupbit.get_current_price(coink) #현재가 재확인
+        for coin in walt: #잔고중 일치하는 코인만 잔고
+            if coin['currency'] == coink.split('-')[1]:
+                if float(coin['balance'])*float(crp) < 5000:
+                    buy5000 = upbit.buy_market_order(coink, 5000) #5000원 추가구매
+                    break
+                else:
+                    result = upbit.sell_market_order(coink, volm)
+                    return result
+            else:
+                continue
+    except Exception as e:
+        print("시장가 비율 매도 에러",e)
+        return False
+
+async def api_sellcoinpercent(uno, coink, volm, db: AsyncSession = Depends(get_db)):
+    try:
+        keys = await api_getKeys(uno, db)
         key1 = keys[0]
         key2 = keys[1]
         upbit = pyupbit.Upbit(key1, key2)
@@ -286,6 +355,18 @@ async def cancelorder(uno:int,setkey:str ,uuid:str, db: AsyncSession = Depends(g
     except Exception as e:
         print("거래 취소 에러 ", e)
         return False
+
+async def api_cancelorder(uno:int,uuid:str, db: AsyncSession = Depends(get_db)):
+    global rows
+    try:
+        keys = await api_getKeys(uno,db)
+        upbit = await pyupbit.Upbit(keys[0], keys[1])
+        await upbit.cancel_order(uuid)
+        return True
+    except Exception as e:
+        print("거래 취소 에러 ", e)
+        return False
+
 
 async def setmypasswd(uno:int,setkey:str, passwd:str, db: AsyncSession = Depends(get_db)):
     try:
@@ -323,6 +404,17 @@ async def get_tradelogupbit(coink:str, userno:int, setkey:str, db: AsyncSession 
         print("거래이력 불러오기 에러",e)
         return False
 
+async def api_tradelogupbit(coink:str, userno:int, db: AsyncSession = Depends(get_db)):
+    global rows
+    try:
+        keys = await api_getKeys(userno,db)
+        upbit = pyupbit.Upbit(keys[0], keys[1])
+        rows = upbit.get_order(coink, state="done")
+        return rows
+    except Exception as e:
+        print("거래이력 불러오기 에러",e)
+        return False
+
 async def get_orderlist(userno:int, setkey:str,slot:int, db: AsyncSession = Depends(get_db)):
     global rows
     try:
@@ -346,6 +438,23 @@ async def get_mtorderlist(userno:int, setkey:str,db: AsyncSession = Depends(get_
         keys = await getKeys(userno,setkey,db)
         upbit = pyupbit.Upbit(keys[0], keys[1])
         setups = await checkwallet(userno, setkey, db)
+        orders = []
+        for setup in setups:
+            if setup["currency"] != "KRW":
+                coink = "KRW-" + setup["currency"]
+                order = upbit.get_order(coink)
+                orders.extend(order)
+        return orders
+    except Exception as e:
+        print("mt주문내용 불러오기 에러",e)
+        return False
+
+async def api_mtorderlist(userno:int, db: AsyncSession = Depends(get_db)):
+    global rows
+    try:
+        keys = await api_getKeys(userno,db)
+        upbit = pyupbit.Upbit(keys[0], keys[1])
+        setups = await api_checkwallet(userno, db)
         orders = []
         for setup in setups:
             if setup["currency"] != "KRW":
@@ -395,6 +504,16 @@ async def getmtpondsetups(uno: int, slotno: int, db: AsyncSession = Depends(get_
 
 
 async def get_mtsetups(uno: int, db: AsyncSession = Depends(get_db)):
+    try:
+        sql = text("select * from mtSetup where userNo=:userno and attrib not like :xatts")
+        rows = await db.execute(sql, {"userno": uno, "xatts": '%XXXUP%'})
+        setups = list(rows.fetchall())
+        return setups
+    except Exception as e:
+        print('설정 불러오기 오류', e)
+        return False
+
+async def api_mtsetups(uno: int, db: AsyncSession = Depends(get_db)):
     try:
         sql = text("select * from mtSetup where userNo=:userno and attrib not like :xatts")
         rows = await db.execute(sql, {"userno": uno, "xatts": '%XXXUP%'})
@@ -1186,3 +1305,12 @@ async def toggle_active_simple(userno: int, active: str, db: AsyncSession = Depe
         raise HTTPException(status_code=400, detail="active 값은 Y 또는 N 이어야 합니다.")
     await setonoff(userno, active_norm, db)
     return {"userNo": userno, "activeYN": active_norm, "updated": True}
+
+@app.post('/api/myorders/{userno}')
+async def myorders(userno:int,db: AsyncSession = Depends(get_db)):
+    try:
+        myorders = await api_mtorderlist(userno,db)
+        return JSONResponse({"success": True, "data": myorders})
+    except Exception as e:
+        return JSONResponse({"success": False, "data": []})
+
