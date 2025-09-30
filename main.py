@@ -1140,7 +1140,7 @@ async def upbittop30(request:Request,uno:int,setkey:str,db: AsyncSession = Depen
 
 @app.get('/api/mtpondsetup/{userno}')
 async def mtpondsetup_all(userno: int, db: AsyncSession = Depends(get_db)):
-    sql = text("SELECT activeYN,initAmt,addAmt,limitAmt,minMargin,maxMargin,tickRate,tickYN,lcRate,lcGap,maxCoincnt FROM mtSetup WHERE userNo = :userno AND attrib NOT LIKE :attrib")
+    sql = text("SELECT activeYN,initAmt,addAmt,limitAmt,minMargin,maxMargin,tickRate,tickYN,lcRate,lcGap,maxCoincnt, martinYN, stopYN, stopAutoYN FROM mtSetup WHERE userNo = :userno AND attrib NOT LIKE :attrib")
     result = await db.execute(sql, {"userno": userno, "attrib": "%XXX%"})
     rows = result.fetchall()
     data = [dict(r._mapping) for r in rows]
