@@ -308,6 +308,58 @@
                             </div>
                         </div>
                     </div>
+                    <div class="col-lg-12">
+                    <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">주문 현황</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered" id="tradestat" name="tradestat" width="100%"
+                                   cellspacing="0">
+                                <thead>
+                                <tr style="text-align: center;vertical-align: middle">
+                                    <th>거래일시</th>
+                                    <th>코인명</th>
+                                    <th>거래종류</th>
+                                    <th>시가비율</th>
+                                    <th>주문가격</th>
+                                    <th>주문수량</th>
+                                    <th>주문금액</th>
+                                    <th>미체결량</th>
+                                    <th>예상수수료</th>
+                                    <th>코인 관리</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {% for items in myorders %}
+                                    <tr>
+                                        <td style="text-align: center">{{ items['created_at'][:10] }} {{ items['created_at'][11:19] }}</td>
+                                        <td style="text-align: center">{{ items['market'] }}</td>
+                                        <td style="text-align: center">{% if items['side'] == 'ask' %}<span
+                                                style="color: blue; ">매도</span>{% else %}
+                                            <span style="color: red; ">매수</span>{% endif %} </td>
+                                        <td style="text-align: center" class="cudiff" ></td>
+                                        <td style="text-align: right" class="oprice">{% if items['price']|float < 1 %}{{ '{:,.6f}'.format(items['price']|float) }}{% elif items['price']|float < 100 %}{{ '{:,.2f}'.format(items['price']|float) }}{% else %}
+                                            {{ '{:,.0f}'.format(items['price']|float) }}{% endif %}</td>
+                                        <td style="text-align: right" class="ovol">{{ items['volume'] }}</td>
+                                        <td style="text-align: right" class="ovalue">{{ "{:,.0f}".format(items['volume']|float * items['price']|float) }}</td>
+                                        <td style="text-align: right">{{ items['remaining_volume'] }}</td>
+                                        <td style="text-align: right">{{ "{:,.0f}".format(items['volume']|float * items['price']|float * 0.0005) }}</td>
+                                        <td>
+                                            <button class="btn form-control btn-primary"
+                                                    onclick="cancelorder({{ user_No }}, {{ setkey }},'{{ items["uuid"] }}')">
+                                                거래 취소
+                                            </button>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    </div>
+                </div>
                 </div>
                 <!-- DataTales Example -->
             </div>
@@ -532,6 +584,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 connectWebSocket();
             }
         });
+    const orderlist = {{ myorders | default([]) | tojson | safe }};
+    updateOrderTable(orderlist);
 });
 
 // 낙관적 업데이트: 즉시 텍스트 변경, 실패 시 원복
@@ -563,6 +617,49 @@ $('#chk1').on('change', function() {
         }
     });
 });
+
+function updateOrderTable(orderlist) {
+    let tbody = "";
+    orderlist.forEach(items => {
+        let created_at = items['created_at'].slice(0, 10) + " " + items['created_at'].slice(11, 19);
+        let market = items['market'];
+        let side = items['side'] === 'ask' ? '<span style="color: blue;">매도</span>' : '<span style="color: red;">매수</span>';
+        let price = parseFloat(items['price']);
+        let priceStr = price < 1 ? price.toFixed(6) : (price < 100 ? price.toFixed(2) : price.toFixed(0));
+        priceStr = numberWithCommas(priceStr);
+        let volume = items['volume'];
+        let ovalue = numberWithCommas((parseFloat(items['volume']) * parseFloat(items['price'])).toFixed(0));
+        let remaining = items['remaining_volume'];
+        let fee = numberWithCommas((parseFloat(items['volume']) * parseFloat(items['price']) * 0.0005).toFixed(0));
+        let row = `
+        <tr>
+            <td style="text-align: center">${created_at}</td>
+            <td style="text-align: center">${market}</td>
+            <td style="text-align: center">${side}</td>
+            <td style="text-align: center" class="cudiff"></td>
+            <td style="text-align: right" class="oprice">${priceStr}</td>
+            <td style="text-align: right" class="ovol">${volume}</td>
+            <td style="text-align: right" class="ovalue">${ovalue}</td>
+            <td style="text-align: right">${remaining}</td>
+            <td style="text-align: right">${fee}</td>
+            <td>
+                <button class="btn form-control btn-primary"
+                    onclick="cancelorder({{ user_No }}, {{ setkey }},'${items["uuid"]}')">
+                    거래 취소
+                </button>
+            </td>
+        </tr>
+        `;
+        tbody += row;
+    });
+    const tableBody = document.querySelector('#tradestat tbody');
+    if (tableBody) tableBody.innerHTML = tbody;
+
+    // 시가비율(cudiff) 갱신 로직이 별도라면 필요 시 호출
+    if (typeof updateCudiff === "function") updateCudiff();
+}
+
+
 </script>
 
 </body>

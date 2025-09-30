@@ -328,7 +328,7 @@ async def get_orderlist(userno:int, setkey:str,slot:int, db: AsyncSession = Depe
     try:
         keys = await getKeys(userno,setkey,db)
         upbit = pyupbit.Upbit(keys[0], keys[1])
-        setups = await getsetups(userno, slot, db)
+        setups = await (userno, slot, db)
         orders = []
         for setup in setups:
             coink = setup[6]
@@ -337,6 +337,24 @@ async def get_orderlist(userno:int, setkey:str,slot:int, db: AsyncSession = Depe
         return orders
     except Exception as e:
         print("주문내용 불러오기 에러",e)
+        return False
+
+
+async def get_mtorderlist(userno:int, setkey:str,db: AsyncSession = Depends(get_db)):
+    global rows
+    try:
+        keys = await getKeys(userno,setkey,db)
+        upbit = pyupbit.Upbit(keys[0], keys[1])
+        setups = await checkwallet(userno, setkey, db)
+        orders = []
+        for setup in setups:
+            if setup["currency"] != "KRW":
+                coink = "KRW-" + setup["currency"]
+                order = upbit.get_order(coink)
+                orders.extend(order)
+        return orders
+    except Exception as e:
+        print("mt주문내용 불러오기 에러",e)
         return False
 
 async def getsetups(uno:int, slotno:int, db: AsyncSession = Depends(get_db)):
@@ -801,8 +819,10 @@ async def mymtpondstat(request:Request ,userno:int,setkey:str,user_session: int 
         userLicense = request.session.get("License")
         onoffstat = await get_onoff(userno, db)
         mysettings = await get_mtsetups(userno,db)
-        print(mysettings)
-        return templates.TemplateResponse('/trade/mypondmain.html', {"request":request, "user_No":userno,"user_Name":userName, "user_Role":userRole ,"setkey":setkey,"license":userLicense, "onoffstat":onoffstat[0], "mysettings":mysettings })
+        mycoins = await checkwallet(userno, setkey, db)
+        myorders = await get_mtorderlist(userno,setkey ,db)
+        print(myorders)
+        return templates.TemplateResponse('/trade/mypondmain.html', {"request":request, "user_No":userno,"user_Name":userName, "user_Role":userRole ,"setkey":setkey,"license":userLicense, "onoffstat":onoffstat[0], "mysettings":mysettings, "myorders":myorders, "mycoins" :mycoins })
     except Exception as e:
         print("mtPond 트레이딩 상태 불러오기 에러",e)
 
