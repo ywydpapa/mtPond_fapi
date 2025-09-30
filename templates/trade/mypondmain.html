@@ -26,6 +26,7 @@
     transition: background .25s;
     margin: 0;
 }
+ td:has(#chk1) { display: flex; justify-content: center; /* 가로 중앙 / align-items: center; / 세로 중앙 / } / 간격 조정 */ td:has(#chk1) .trade-toggle { gap: 8px; }
 
 .toggle-label .toggle-handle {
     position: absolute;
@@ -77,14 +78,6 @@
             <!-- Begin Page Content -->
             <div class="container-fluid">
                     <div class="card-header py-3 d-flex align-items-center justify-content-between">
-                        <h6 class="m-0 font-weight-bold text-primary mb-0">거래시작</h6>
-                            <div class="trade-toggle d-flex align-items-center gap-2">
-                                <input type="checkbox" id="chk1" class="toggle-input" {% if onoffstat == 'Y' %}checked{% endif %}/>
-                                <label for="chk1" class="toggle-label" aria-label="거래 시작 토글">
-                                <span class="toggle-handle"></span>
-                                </label>
-                                <span id="chk1-state" class="toggle-state-text mb-0">  OFF</span>
-                            </div>
                     </div>
                 <!-- Page Heading -->
                 <div class="row">
@@ -228,6 +221,93 @@
                             </div>
                         </div>
                     </div>
+                    <div class="col-lg-12">
+                        <div class="card ">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">거래 설정 조정</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered">
+                                        <colgroup>
+                                            <col style="width: 50%;">
+                                            <col style="width: 50%;">
+                                        </colgroup>
+                                        <tr>
+                                            <td style="text-align: center">
+                                                <h6 class="m-0 font-weight-bold text-primary mb-0">거래시작</h6>
+                                            </td>
+                                            <td class="td-center-toggle">
+                                                <div class="trade-toggle d-flex align-items-center">
+                                                    <input type="checkbox" id="chk1" class="toggle-input" {% if onoffstat == 'Y' %}checked{% endif %}/>
+                                                    <label for="chk1" class="toggle-label" aria-label="거래 시작 토글">
+                                                    <span class="toggle-handle"></span>
+                                                    </label>
+                                                        <span id="chk1-state" class="toggle-state-text mb-0">  OFF</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align: center">
+                                                <h6 class="m-0 font-weight-bold text-primary mb-0">거래시작 금액</h6>
+                                            </td>
+                                            <td style = "text-align: right">
+                                                {{ mysettings[0][4] | currency }}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align: center">
+                                                <h6 class="m-0 font-weight-bold text-primary mb-0">추가매수 금액</h6>
+                                            </td>
+                                            <td style = "text-align: right">
+                                                {{ mysettings[0][5]|currency }}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align: center">
+                                                <h6 class="m-0 font-weight-bold text-primary mb-0">매수한계 금액</h6>
+                                            </td>
+                                            <td style = "text-align: right">
+                                                {{ mysettings[0][6]|currency }}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align: center">
+                                                <h6 class="m-0 font-weight-bold text-primary mb-0">손절 설정치</h6>
+                                            </td>
+                                            <td style = "text-align: right">
+                                                {{ mysettings[0][11]}}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align: center">
+                                                <h6 class="m-0 font-weight-bold text-primary mb-0">최대 구매 코인 수</h6>
+                                            </td>
+                                            <td style = "text-align: right">
+                                                {{ mysettings[0][13]}}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align: center">
+                                                <h6 class="m-0 font-weight-bold text-primary mb-0">마틴시스템 적용</h6>
+                                            </td>
+                                            <td style = "text-align: right">
+                                                {{ mysettings[0][14]}}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align: center">
+                                                <h6 class="m-0 font-weight-bold text-primary mb-0">손절 적용</h6>
+                                            </td>
+                                            <td style = "text-align: right">
+                                                {{ mysettings[0][15]}}
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <!-- DataTales Example -->
             </div>
@@ -257,24 +337,18 @@
 
 <script>
 const selectIds = ['selcoin1', 'selcoin2', 'selcoin3'];
-let coinList = []; // API에서 받아올 전체 코인 목록
-let selectedCoins = []; // 현재 선택된 3개 코인명
-
-// 차트 객체 저장용
+let coinList = [];
+let selectedCoins = [];
 const charts = {};
-
-// 체결 및 가격 데이터 저장용
 const recentTrades = {};
 const priceHistory = {};
 const currentPrices = {};
 
-// 콤마 찍기 함수
 function numberWithCommas(x) {
     if (x == null) return '';
     return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
-// fillSelects 함수: 셀렉트 박스 중복 방지 및 옵션 채우기
 function fillSelects(selectedValues = {}) {
     selectIds.forEach(id => {
         const sel = document.getElementById(id);
@@ -284,17 +358,14 @@ function fillSelects(selectedValues = {}) {
             const opt = document.createElement('option');
             opt.value = coin;
             opt.textContent = coin;
-            // 다른 셀렉트에서 이미 선택된 코인은 비활성화
             if (Object.values(selectedValues).includes(coin) && selectedValues[id] !== coin) {
                 opt.disabled = true;
             }
             sel.appendChild(opt);
         });
-        // 선택값이 있으면 선택, 없으면 첫 번째 활성화된 옵션 선택
         if (selectedValues[id]) {
             sel.value = selectedValues[id];
         } else {
-            // disabled 아닌 첫 번째 옵션 선택
             for (const option of sel.options) {
                 if (!option.disabled) {
                     sel.value = option.value;
@@ -305,7 +376,6 @@ function fillSelects(selectedValues = {}) {
     });
 }
 
-// 선택된 코인 배열 반환
 function getSelectedCoins() {
     return selectIds.map(id => {
         const sel = document.getElementById(id);
@@ -313,7 +383,6 @@ function getSelectedCoins() {
     });
 }
 
-// 차트 생성 함수
 function createTrendChart(canvasId, color) {
     const ctx = document.getElementById(canvasId).getContext('2d');
     return new Chart(ctx, {
@@ -342,7 +411,6 @@ function createTrendChart(canvasId, color) {
     });
 }
 
-// 트렌드 차트 갱신 함수
 function updateTrendChart(idx, price) {
     const selected = getSelectedCoins();
     const market = selected[idx];
@@ -358,29 +426,23 @@ function updateTrendChart(idx, price) {
     }
 }
 
-// 웹소켓 객체
 let ws = null;
 
-// 웹소켓 연결 및 메시지 처리
 function connectWebSocket() {
-    // 기존 연결 종료
     if (ws) ws.close();
 
     selectedCoins = getSelectedCoins();
     const protocol = location.protocol === "https:" ? "wss" : "ws";
     ws = new WebSocket(`${protocol}://${location.host}/ws/trade?coins=${selectedCoins.join(",")}`);
 
-    // 데이터 구조 초기화
     selectedCoins.forEach((coin, idx) => {
         recentTrades[coin] = [];
         priceHistory[coin] = [];
         currentPrices[coin] = null;
-        // 차트 초기화
         const canvasId = `trendChart${idx+1}`;
         const color = ['rgba(255,99,132,1)','rgba(54,162,235,1)','rgba(255,206,86,1)'][idx];
         charts[coin] = createTrendChart(canvasId, color);
 
-        // UI 초기화
         document.getElementById(`curtrade${idx+1}-price`).innerText = '-';
         document.getElementById(`curtrade${idx+1}-bid`).innerText = '-';
         document.getElementById(`curtrade${idx+1}-ask`).innerText = '-';
@@ -388,18 +450,15 @@ function connectWebSocket() {
 
     ws.onmessage = function(event) {
         const data = JSON.parse(event.data);
-        // 데이터 예시: { market: "KRW-BTC", trade_price: 12345, trade_volume: 1.23, ask_bid: "BID" }
         const market = data.market || data.coin;
         if (!market || !selectedCoins.includes(market)) return;
 
-        // 체결 데이터 관리
         if (!recentTrades[market]) recentTrades[market] = [];
         recentTrades[market].push(data);
         if (recentTrades[market].length > 20) {
             recentTrades[market].shift();
         }
 
-        // 매수/매도 합계 계산
         let bidSumKRW = 0;
         let askSumKRW = 0;
         recentTrades[market].forEach(trade => {
@@ -410,15 +469,12 @@ function connectWebSocket() {
             }
         });
 
-        // 인덱스 찾기
         const idx = selectedCoins.indexOf(market);
 
-        // UI에 값 표시
         document.getElementById(`curtrade${idx+1}-price`).innerText = numberWithCommas(data.trade_price);
         document.getElementById(`curtrade${idx+1}-bid`).innerText = numberWithCommas(bidSumKRW.toFixed(0));
         document.getElementById(`curtrade${idx+1}-ask`).innerText = numberWithCommas(askSumKRW.toFixed(0));
 
-        // 가격 히스토리 저장 및 차트 갱신
         if (!priceHistory[market]) priceHistory[market] = [];
         priceHistory[market].push(data.trade_price);
         if (priceHistory[market].length > 20) {
@@ -430,7 +486,6 @@ function connectWebSocket() {
             chart.update();
         }
 
-        // 추가적으로 차익 등 갱신 함수가 있다면 호출
         if (typeof updateCudiff === "function") updateCudiff();
     };
 
@@ -439,9 +494,7 @@ function connectWebSocket() {
     };
 }
 
-// 셀렉트 변경 이벤트 핸들러
 function onSelectChange() {
-    // fillSelects로 중복 방지 옵션 처리
     const selectedValues = {};
     selectIds.forEach(id => {
         const sel = document.getElementById(id);
@@ -449,18 +502,22 @@ function onSelectChange() {
         selectedValues[id] = sel.value;
     });
     fillSelects(selectedValues);
-
-    // 코인 선택이 바뀌면 웹소켓 재연결 및 차트/데이터 초기화
     connectWebSocket();
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    // chk1 초기 텍스트 동기화
+    const chk = document.getElementById('chk1');
+    const state = document.getElementById('chk1-state');
+    if (chk && state) {
+        state.textContent = chk.checked ? 'ON' : 'OFF';
+    }
+
     fetch('http://ywydpapa.iptime.org:8000/api/top30coins')
         .then(response => response.json())
         .then(data => {
             if (data && data.markets && Array.isArray(data.markets)) {
                 coinList = data.markets;
-                // 최초 선택값: 앞에서부터 3개
                 const initialValues = {
                     selcoin1: coinList[0] || '',
                     selcoin2: coinList[1] || '',
@@ -472,33 +529,41 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (!sel) return;
                     sel.addEventListener('change', onSelectChange);
                 });
-                // 최초 연결
                 connectWebSocket();
             }
         });
 });
 
+// 낙관적 업데이트: 즉시 텍스트 변경, 실패 시 원복
 $('#chk1').on('change', function() {
     const userno = {{ user_No  }};
-    const active = this.checked ? 'Y' : 'N';
+    const isChecked = this.checked;          // 새 상태
+    const active = isChecked ? 'Y' : 'N';
     const $toggle = $(this);
+    const $state = $('#chk1-state');
+    // 1) 즉시 텍스트 업데이트
+    $state.text(isChecked ? 'ON' : 'OFF');
+    // 2) 요청 전 disable
     $toggle.prop('disabled', true);
     $.ajax({
         url: `/api/mtpondsetonoff/${userno}/${active}`,
         method: 'POST',
         success: function(res){
-            $('#chk1-state').text(active ? 'ON' : 'OFF');
+            // 성공 시 별도 처리 불필요(이미 반영됨)
         },
         error: function(){
             alert('업데이트 실패');
-            $toggle.prop('checked', !active);
+            // 3) 상태 원복
+            const reverted = !isChecked;
+            $toggle.prop('checked', reverted);
+            $state.text(reverted ? 'ON' : 'OFF');
         },
         complete: function(){
             $toggle.prop('disabled', false);
         }
     });
 });
-
 </script>
+
 </body>
 </html>
