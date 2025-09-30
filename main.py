@@ -1314,3 +1314,18 @@ async def myorders(userno:int,db: AsyncSession = Depends(get_db)):
     except Exception as e:
         return JSONResponse({"success": False, "data": []})
 
+@app.get("/phapp/mlogin/{userid}/{passwd}")
+async def mlogin(userid: str, passwd: str, db: AsyncSession = Depends(get_db)):
+    result = None
+    try:
+        query = text("SELECT userNo, userName,setupKey from trUser where userId = :userid and userPasswd = PASSWORD(:passwd)")
+        r = await db.execute(query, {"userid": userid, "passwd": passwd})
+        rows = r.fetchone()
+        if rows is None:
+            return {"error": "No data found for the given data."}
+        result = {"userno": rows[0], "username": rows[1], "setupkey": rows[2]}
+    except:
+        print("mLogin error")
+    finally:
+        return result
+
