@@ -1318,7 +1318,7 @@ async def myorders(userno:int,db: AsyncSession = Depends(get_db)):
 async def mlogin(userid: str, passwd: str, db: AsyncSession = Depends(get_db)):
     result = None
     try:
-        query = text("SELECT userNo, userName,setupKey from trUser where userId = :userid and userPasswd = PASSWORD(:passwd)")
+        query = text("SELECT userNo, userName,setupKey from traceUser where userId = :userid and userPasswd = PASSWORD(:passwd)")
         r = await db.execute(query, {"userid": userid, "passwd": passwd})
         rows = r.fetchone()
         if rows is None:
