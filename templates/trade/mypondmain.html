@@ -347,10 +347,14 @@
                                         <td style="text-align: right">{{ items['remaining_volume'] }}</td>
                                         <td style="text-align: right">{{ "{:,.0f}".format(items['volume']|float * items['price']|float * 0.0005) }}</td>
                                         <td>
-                                            <button class="btn form-control btn-primary"
-                                                    onclick="cancelorder({{ user_No }}, {{ setkey }},'{{ items["uuid"] }}')">
+                                        <td>
+                                              <button class="btn form-control btn-primary btn-cancel"
+                                                      data-uno="{{ user_No }}"
+                                                      data-setkey="{{ setkey }}"
+                                                      data-uuid="${items["uuid"]}">
                                                 거래 취소
-                                            </button>
+                                              </button>
+                                        </td>
                                         </td>
                                     </tr>
                                 {% endfor %}
@@ -395,6 +399,44 @@ const charts = {};
 const recentTrades = {};
 const priceHistory = {};
 const currentPrices = {};
+
+try {
+  console.log('[init] define cancelorder');
+  window.cancelorder = function(uno, setkey, uuid) {
+    if (!confirm('본 거래를 취소 하시겠습니까?')) return;
+    const formData = new FormData();
+    formData.append('uno', uno);
+    formData.append('setkey', setkey);
+    formData.append('uuid', uuid);
+
+    $.ajax({
+      type: 'POST',
+      url: '/cancelOrder',
+      data: formData,
+      processData: false,
+      contentType: false,
+      success: (res) => {
+        if (res && (res.success === true || res === 'OK' || res === 'SUCCESS')) {
+          fetchOrderListAndUpdate?.();
+        } else {
+          alert((res && (res.message || res.error)) || '거래 취소 실패');
+        }
+      },
+      error: (xhr, status, err) => {
+        console.error('cancelOrder error:', status, err, xhr?.responseText);
+        alert('네트워크/서버 오류');
+      }
+    });
+  };
+
+  // 이벤트 위임: 동적 행에도 동작
+  $(document).on('click', '.btn-cancel', function() {
+    const $b = $(this);
+    window.cancelorder($b.data('uno'), $b.data('setkey'), $b.data('uuid'));
+  });
+} catch(e) {
+  console.error('[init] cancelorder define failed:', e);
+}
 
 function numberWithCommas(x) {
     if (x == null) return '';
@@ -618,6 +660,28 @@ $('#chk1').on('change', function() {
     });
 });
 
+function fetchOrderListAndUpdate() {
+  $.ajax({
+    type: 'GET',
+    url: `/rest_getmtorder/{{ user_No }}/{{ setkey }}`,
+    dataType: 'json',
+    success: function(res) {
+      console.log('rest_getorder response:', res);
+      let list = null;
+      if (Array.isArray(res)) list = res;
+      else if (res && Array.isArray(res.data)) list = res.data;
+      else if (res && Array.isArray(res.list)) list = res.list;
+      else if (res && res.success === true && Array.isArray(res.orders)) list = res.orders;
+
+      if (list) updateOrderTable(list);
+      else console.warn('No order list found in response');
+    },
+    error: function(xhr, status, err) {
+      console.error('rest_getorder failed:', status, err, xhr?.responseText);
+    }
+  });
+}
+
 function updateOrderTable(orderlist) {
     let tbody = "";
     orderlist.forEach(items => {
@@ -643,8 +707,10 @@ function updateOrderTable(orderlist) {
             <td style="text-align: right">${remaining}</td>
             <td style="text-align: right">${fee}</td>
             <td>
-                <button class="btn form-control btn-primary"
-                    onclick="cancelorder({{ user_No }}, {{ setkey }},'${items["uuid"]}')">
+                 <button class="btn form-control btn-primary btn-cancel"
+                    data-uno="{{ user_No }}"
+                    data-setkey="{{ setkey }}"
+                    data-uuid="${items["uuid"]}">
                     거래 취소
                 </button>
             </td>
@@ -658,9 +724,6 @@ function updateOrderTable(orderlist) {
     // 시가비율(cudiff) 갱신 로직이 별도라면 필요 시 호출
     if (typeof updateCudiff === "function") updateCudiff();
 }
-
-
 </script>
-
 </body>
 </html>

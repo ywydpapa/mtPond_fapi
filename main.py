@@ -940,7 +940,6 @@ async def mymtpondstat(request:Request ,userno:int,setkey:str,user_session: int 
         mysettings = await get_mtsetups(userno,db)
         mycoins = await checkwallet(userno, setkey, db)
         myorders = await get_mtorderlist(userno,setkey ,db)
-        print(myorders)
         return templates.TemplateResponse('/trade/mypondmain.html', {"request":request, "user_No":userno,"user_Name":userName, "user_Role":userRole ,"setkey":setkey,"license":userLicense, "onoffstat":onoffstat[0], "mysettings":mysettings, "myorders":myorders, "mycoins" :mycoins })
     except Exception as e:
         print("mtPond 트레이딩 상태 불러오기 에러",e)
@@ -1126,6 +1125,15 @@ async def update_userdetail(request:Request,
 async def restgetorder(request:Request ,userno:int,setkey:str,slot:int,db: AsyncSession = Depends(get_db)):
     try:
         orderlist = await get_orderlist(userno, setkey, slot, db)
+        return JSONResponse({"success": True, "data": orderlist})
+    except Exception as e:
+        print("Error!!", e)
+        return JSONResponse({"success": False, "data": [] })
+
+@app.get('/rest_getmtorder/{userno}/{setkey}')
+async def restgetmtorder(request:Request ,userno:int,setkey:str,db: AsyncSession = Depends(get_db)):
+    try:
+        orderlist = await get_mtorderlist(userno, setkey,db)
         return JSONResponse({"success": True, "data": orderlist})
     except Exception as e:
         print("Error!!", e)
