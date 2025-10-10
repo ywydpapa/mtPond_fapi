@@ -27,7 +27,7 @@ import websockets
 import json
 from sqlalchemy import text
 from pandas import DataFrame
-from typing import Optional
+from typing import Optional, List
 
 
 dotenv.load_dotenv()
@@ -1338,3 +1338,33 @@ async def mlogin(userid: str, passwd: str, db: AsyncSession = Depends(get_db)):
         return result
 
 
+@app.get("/excoinlist/{userNo}/{setkey}")
+async def excoin(request:Request, userNo:int, setkey:str, db: AsyncSession = Depends(get_db)):
+    excoinlist = None
+    coinlist = pyupbit.get_tickers(fiat="KRW")
+    try:
+        query = text("SELECT DISTINCT market FROM exCoinlist WHERE userNo in (0, :userno)  and attrib NOT LIKE :attrib")
+        r = await db.execute(query, {"userno": userNo, "attrib": "%XXX%"})
+        rows = r.fetchall()
+        if rows is None:
+            return {"error": "No data found for the given data."}
+        excoinlist = [r[0] for r in rows]
+    except:
+        print("excoinlist error")
+    finally:
+        return templates.TemplateResponse('/trade/excoin.html', {"request": request, "user_No": userNo,"setkey":setkey, "coinlist":coinlist, "excoinlist":excoinlist})
+
+
+@app.post("/setexCoin/{userNo}")
+async def setexcoin(request:Request, userNo: int, selcoin: Optional[List[str]] = Form(default=None, alias="selcoin[]"), db: AsyncSession = Depends(get_db)):
+    selcoin = selcoin or []
+    try:
+        query  = text("UPDATE exCoinlist set attrib = :attx WHERE userNo = :userno")
+        await db.execute(query, {"attx":"XXXUPXXXUP", "userno": userNo})
+        for coin in selcoin:
+            query = text("INSERT INTO exCoinlist (userNo, market) values (:userNo, :market)")
+            await db.execute(query, {"userNo": userNo, "market": coin})
+        await db.commit()
+        return RedirectResponse(url=f"/excoinlist/{userNo}/{request.session.get('setKey')}", status_code=303)
+    except:
+        print("setexcoin error")
