@@ -493,7 +493,7 @@ if __name__ == "__main__":
     coin_list = get_upbit_krw_coins()
 
     # 테스트를 위해 단일 코인 고정
-    target_coins = ['KRW-IP']
+    target_coins = ['KRW-BTC']
     intervals = ['30m', '15m', '5m']
 
     while True:
