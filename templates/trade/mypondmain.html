@@ -607,7 +607,7 @@ document.addEventListener('DOMContentLoaded', function() {
         state.textContent = chk.checked ? 'ON' : 'OFF';
     }
 
-    fetch('http://ywydpapa.iptime.org:8000/api/top30coins')
+    fetch('http://localhost:8008/api/top30coins')
         .then(response => response.json())
         .then(data => {
             if (data && data.markets && Array.isArray(data.markets)) {
