@@ -115,7 +115,7 @@
 
 
 const protocol = location.protocol === "https:" ? "wss" : "ws";
-let ws = new WebSocket("ws://becog.iptime.org:8088/ws/top30trend");
+let ws = new WebSocket("ws://hitoff.iptime.org/ws/top30trend");
 
     ws.onopen = function() {
         console.log("WebSocket 연결됨");
@@ -237,7 +237,7 @@ let table = $('#trade-table').DataTable({
 }
 
 function fetchTrendData() {
-    $.get('http://becog.iptime.org:8088/api/aitrendt30', function(data) {
+    $.get('http://hitoff.iptime.org/api/aitrendt30', function(data) {
         trendData = data;
     });
 }
