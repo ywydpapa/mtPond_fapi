@@ -1318,9 +1318,10 @@ async def toggle_active_simple(userno: int, active: str, db: AsyncSession = Depe
 async def myorders(userno:int,db: AsyncSession = Depends(get_db)):
     try:
         myorders = await api_mtorderlist(userno,db)
-        return JSONResponse({"success": True, "data": myorders})
+        cprices = await get_current_prices()
+        return JSONResponse({"success": True, "data": myorders, "cprices": cprices})
     except Exception as e:
-        return JSONResponse({"success": False, "data": []})
+        return JSONResponse({"success": False, "data": [], "cprices": []})
 
 @app.get("/phapp/mlogin/{userid}/{passwd}")
 async def mlogin(userid: str, passwd: str, db: AsyncSession = Depends(get_db)):
