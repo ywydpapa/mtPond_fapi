@@ -1314,8 +1314,8 @@ async def toggle_active_simple(userno: int, active: str, db: AsyncSession = Depe
     await setonoff(userno, active_norm, db)
     return {"userNo": userno, "activeYN": active_norm, "updated": True}
 
-@app.post('/api/myorders/{userno}')
-async def myorders(userno:int,db: AsyncSession = Depends(get_db)):
+@app.post('/api/myorders/{userno}/{setkey}')
+async def myorders(userno:int,setkey:str , db: AsyncSession = Depends(get_db)):
     try:
         myorders = await api_mtorderlist(userno,db)
         cprices = await get_current_prices()
