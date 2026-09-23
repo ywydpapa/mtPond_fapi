@@ -1338,6 +1338,27 @@ async def mlogin(userid: str, passwd: str, db: AsyncSession = Depends(get_db)):
         return result
 
 
+@app.get("/api/balance/{userno}/{setkey}")
+async def api_my_balance(
+        request: Request,
+        userno: int,setkey: str,
+        db: AsyncSession = Depends(get_db)
+):
+    try:
+        mycoins = await checkwallet(userno, setkey, db)
+        cprices = await get_current_prices()
+
+        return {
+            "success": True,
+            "userNo": userno,
+            "mycoins": mycoins,
+            "cuprices": cprices
+        }
+    except Exception as e:
+        print("Get API Balances Error !!", e)
+        raise HTTPException(status_code=500, detail="지갑 정보를 불러오는데 실패했습니다.")
+
+
 @app.get("/excoinlist/{userNo}/{setkey}")
 async def excoin(request:Request, userNo:int, setkey:str, db: AsyncSession = Depends(get_db)):
     excoinlist = None
