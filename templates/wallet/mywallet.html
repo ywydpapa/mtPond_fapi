@@ -22,6 +22,18 @@
     color: #64748b; /* 중립 회색 */
     font-size: 1.2em;
   }
+  .hot-badge {
+    background-color: #ef4444; /* 빨간색 배경 */
+    color: white;
+    font-size: 0.7em;
+    font-weight: bold;
+    padding: 2px 5px;
+    border-radius: 4px;
+    margin-left: 5px;
+    vertical-align: middle;
+    display: inline-block;
+  }
+
 </style>
 
 </head>
@@ -163,10 +175,15 @@
 {% include '/comm/adscript.html' %}
 
 <script>
+    let hotMarkets = [];
+
 $(document).ready(function () {
     calcvalue();
     startRefreshTimer();
     setInterval(refreshWalletTable, 300000);
+
+    fetchHotCoins();
+    setInterval(fetchHotCoins, 60000);
 });
 
 let refreshIntervalSec = 300; // 5분 = 300초
@@ -190,6 +207,42 @@ function startRefreshTimer() {
     }, 1000);
 }
 
+function fetchHotCoins() {
+    $.ajax({
+        url: "http://becog.iptime.org:8088/api/top30coins",
+        method: "GET",
+        success: function(res) {
+            if (res && res.markets) {
+                hotMarkets = res.markets;
+                applyHotBadges();
+            }
+        },
+        error: function(err) {
+            console.error("HOT 코인 목록을 가져오는데 실패했습니다.", err);
+        }
+    });
+}
+
+// 테이블에 HOT 배지 적용 함수
+function applyHotBadges() {
+    $("#dataTable tbody tr").each(function() {
+        let $coinCell = $(this).find(".coins");
+        if ($coinCell.length > 0) {
+            let coinName = $coinCell.find("a").text().trim();
+            if (coinName && coinName !== "KRW") {
+                let marketName = "KRW-" + coinName;
+
+                // 기존 배지가 있다면 중복 방지를 위해 제거
+                $coinCell.find(".hot-badge").remove();
+
+                // API에서 받아온 목록에 현재 코인이 포함되어 있다면 배지 추가
+                if (hotMarkets.includes(marketName)) {
+                    $coinCell.append('<span class="hot-badge">HOT</span>');
+                }
+            }
+        }
+    });
+}
 function updateRefreshDisplay() {
     // 초 또는 분:초 형태로 표시
     let min = Math.floor(refreshRemaining / 60);
@@ -334,6 +387,8 @@ function updateWalletTable(mycoins) {
 
     // 테이블 값 재계산
     calcvalue();
+
+    applyHotBadges();
 }
 
 function safeParseFloat(val) {
