@@ -16,7 +16,7 @@ from typing import Dict, List, Optional
 # ==========================================
 import aiohttp
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.interval import IntervalTrigger
+from apscheduler.triggers.cron import CronTrigger
 import dotenv
 import httpx
 import jinja2
@@ -168,18 +168,18 @@ scheduler = AsyncIOScheduler()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 6시간 간격 스케줄러 등록
+    # 0시부터 3시간 간격(0, 3, 6, 9, 12, 15, 18, 21시 정각) 실행 등록
     scheduler.add_job(
         job_collect_wallet_balances,
-        trigger=IntervalTrigger(hours=6),
+        trigger=CronTrigger(hour="0,3,6,9,12,15,18,21", minute=0),
         id="wallet_balance_collector",
-        name="6시간마다 지갑 잔고 기록",
+        name="3시간마다 지갑 잔고 기록 (하루 8회)",
         replace_existing=True,
     )
     scheduler.start()
-    print("스케줄러 시작됨 (6시간 주기 실행)")
+    print("스케줄러 시작됨 (0시 기준 3시간 주기 실행)")
 
-    # 서버 시작 직후 1회 백그라운드 수집 실행
+    # 서버 시작 직후 1회 실행 (분산 락 덕분에 4개 워커 중 1개만 실행됨)
     asyncio.create_task(job_collect_wallet_balances())
 
     yield
@@ -758,66 +758,82 @@ async def editbidsetup(sno, uno, setkey, initbid, bidstep, bidrate, askrate, coi
 # ==========================================
 # 7. 주기적 백그라운드 태스크
 # ==========================================
+# ==========================================
+# 7. 주기적 백그라운드 태스크
+# ==========================================
 async def job_collect_wallet_balances():
+    # 3시간 주기 실행 시, 워커 간 중복 실행 방지를 위한 Redis 분산 락
+    lock_key = "lock:job_collect_wallet_balances"
+
+    # nx=True(키가 없을 때만 설정), ex=180(180초 후 자동 만료)
+    # 다른 워커 프로세스가 동시에 실행하려 해도 락 획득 실패 시 바로 종료됩니다.
+    is_locked = await redis_client.set(lock_key, "locked", nx=True, ex=180)
+    if not is_locked:
+        print("[Scheduler] 이미 다른 프로세스에서 잔고 수집 작업이 진행 중입니다. 작업을 건너뜁니다.")
+        return
+
     now = datetime.now()
     print(f"[{now}] === 지갑 잔고 스케줄러 수집 시작 ===")
 
-    async with AsyncSessionLocal() as db:
-        users = await listUsers(db)
-        if not users:
-            print("수집 대상 사용자가 없습니다.")
-            return
+    try:
+        async with AsyncSessionLocal() as db:
+            users = await listUsers(db)
+            if not users:
+                print("수집 대상 사용자가 없습니다.")
+                return
 
-        insert_sql = text("""
-                          INSERT INTO walletBalance (userNo, timeStamp, balanceKRW, totalKRW, attrib)
-                          VALUES (:userNo, :timeStamp, :balanceKRW, :totalKRW, :attrib)
-                          """)
+            insert_sql = text("""
+                              INSERT INTO walletBalance (userNo, timeStamp, balanceKRW, totalKRW, attrib)
+                              VALUES (:userNo, :timeStamp, :balanceKRW, :totalKRW, :attrib)
+                              """)
 
-        for user in users:
-            user_no = user.get("userNo")
-            if not user_no:
-                continue
+            for user in users:
+                user_no = user.get("userNo")
+                if not user_no:
+                    continue
 
-            balances = await api_checkwallet(user_no, db)
-            if not balances or not isinstance(balances, list):
-                continue
+                balances = await api_checkwallet(user_no, db)
+                if not balances or not isinstance(balances, list):
+                    continue
 
-            balance_krw = 0.0
-            coin_buy_total = 0.0
+                balance_krw = 0.0
+                coin_buy_total = 0.0
 
-            for item in balances:
-                currency = item.get("currency", "")
-                balance = float(item.get("balance", 0.0))
-                locked = float(item.get("locked", 0.0))
-                avg_buy_price = float(item.get("avg_buy_price", 0.0))
+                for item in balances:
+                    currency = item.get("currency", "")
+                    balance = float(item.get("balance", 0.0))
+                    locked = float(item.get("locked", 0.0))
+                    avg_buy_price = float(item.get("avg_buy_price", 0.0))
 
-                if currency == "KRW":
-                    balance_krw += (balance + locked)
-                else:
-                    coin_buy_total += (balance + locked) * avg_buy_price
+                    if currency == "KRW":
+                        balance_krw += (balance + locked)
+                    else:
+                        coin_buy_total += (balance + locked) * avg_buy_price
 
-            total_krw = balance_krw + coin_buy_total
+                total_krw = balance_krw + coin_buy_total
 
-            try:
-                await db.execute(
-                    insert_sql,
-                    {
-                        "userNo": user_no,
-                        "timeStamp": now,
-                        "balanceKRW": round(balance_krw, 2),
-                        "totalKRW": round(total_krw, 2),
-                        "attrib": "1000010000",
-                    },
-                )
-                await db.commit()
-                print(f"[userNo: {user_no}] 저장 완료 - 원화: {balance_krw:,.0f}원 | 총 매수금액: {total_krw:,.0f}원")
-            except Exception as e:
-                await db.rollback()
-                print(f"[userNo: {user_no}] DB 저장 실패:", e)
+                try:
+                    await db.execute(
+                        insert_sql,
+                        {
+                            "userNo": user_no,
+                            "timeStamp": now,
+                            "balanceKRW": round(balance_krw, 2),
+                            "totalKRW": round(total_krw, 2),
+                            "attrib": "1000010000",
+                        },
+                    )
+                    await db.commit()
+                    print(f"[userNo: {user_no}] 저장 완료 - 원화: {balance_krw:,.0f}원 | 총 매수금액: {total_krw:,.0f}원")
+                except Exception as e:
+                    await db.rollback()
+                    print(f"[userNo: {user_no}] DB 저장 실패:", e)
 
-            await asyncio.sleep(0.2)
+                await asyncio.sleep(0.2)
 
-    print(f"[{datetime.now()}] === 지갑 잔고 스케줄러 수집 완료 ===")
+        print(f"[{datetime.now()}] === 지갑 잔고 스케줄러 수집 완료 ===")
+    except Exception as ex:
+        print("[Scheduler] 잔고 수집 작업 중 예외 발생:", ex)
 
 
 # ==========================================
