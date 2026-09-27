@@ -52,20 +52,18 @@
                     </div>
                 </div>
                     <div class="col-lg-6">
-                            <div class="card h-50 shadow mb-4">
-                                <div class="card-header py-3">
-                                    <h6 class="m-0 font-weight-bold text-primary">수익현황</h6>
-                                </div>
-                                <div class="card-body">
-                                    <div class="chart-area">
-                                        <canvas id="myChart1" width="100%" height="45%"></canvas>
-                                    </div>
-                                </div>
-                                <div class="card-footer">
-                                </div>
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">수익현황</h6>
+                            </div>
+                        <div class="card-body">
+                            <div class="chart-area" style="position: relative; height: 320px;">
+                                <canvas id="myChart1"></canvas>
                             </div>
                         </div>
-                </div>
+                        <div class="card-footer">
+                        </div>
+                    </div>
                 </div>
                 <!-- /.container-fluid -->
             </div>
@@ -92,94 +90,98 @@
     {% include '/comm/adscript.html' %}
     {% include '/comm/adscriptchart.html' %}
 <script>
+    // 서버에서 전달받은 원본 데이터 (X축: 일시, Y축: 총 잔고)
+    var dataArr1 = {{ tval | safe }};
+    var dataArr2 = {{ ival | safe }};
+
     $(document).ready(function () {
-        calbenifit();
         setcurr();
+        calbenifit();
+        renderChart();
     });
 
     function numberWithCommas(x) {
-		return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-	}
-
-    function numberNoneCommas(x) {
-		return x.toString().replace(/[\D\s\._\-]+/g, "");
-	}
+        if (x === null || x === undefined) return "0";
+        return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
 
     function setcurr(){
-        $Aarr = $(".vola");
-        for (var i = 0; i < $Aarr.length; i++) {
-            var cur = $Aarr[i].innerText;
-            $Aarr[i].innerText = numberWithCommas(cur);
-        }
+        $(".vola").each(function () {
+            var val = parseInt($(this).text().replace(/,/g, '')) || 0;
+            $(this).text(numberWithCommas(val));
+        });
     }
 
     function calbenifit(){
-        $Aarr = $(".vola");
-        $Barr = $(".volb");
+        var $Aarr = $(".vola");
+        var $Barr = $(".volb");
         var suminc = 0;
-        for (var i = 0; i<$Aarr.length; i++){
-            var aval = 0;
-            if (i === 0){
-                var cur = $Aarr[i].innerText;
-            }else{
-                var cur = $Aarr[i-1].innerText;
+
+        for (var i = 0; i < $Aarr.length; i++) {
+            var cur = parseInt($Aarr[i].innerText.replace(/,/g, '')) || 0;
+            var prev = (i === 0) ? cur : (parseInt($Aarr[i - 1].innerText.replace(/,/g, '')) || 0);
+
+            var diff = cur - prev; // 이전 회차 대비 변동액
+            suminc += diff;
+
+            // 변동액 색상 구분 (+ 빨강, - 파랑)
+            if (diff > 0) {
+                $Barr[i].innerHTML = "<span style='color:red;'>+" + numberWithCommas(diff) + "</span>";
+            } else if (diff < 0) {
+                $Barr[i].innerHTML = "<span style='color:blue;'>" + numberWithCommas(diff) + "</span>";
+            } else {
+                $Barr[i].innerText = "0";
             }
-            var bur = $Aarr[i].innerText;
-            aval = bur - cur ;
-            suminc = suminc + aval; ;
-            $Barr[i].innerText = numberWithCommas(aval);
-            dataArr2.push(aval);
         }
         $("#suminc").html(numberWithCommas(suminc));
-
     }
 
-    dataArr1 = {{ tval | safe }};
-    dataArr2 = {{ ival | safe }};
+    function renderChart() {
     new Chart(document.getElementById("myChart1"), {
-    type: 'line',
-    data: {
-        labels: dataArr1,
-        datasets: [{
-            label: '잔고',
-            data: dataArr2,
-            borderColor: "rgb(247,85,16)",
-            fill: false,
-            lineTension: 0
-        }]
-    },
-    options: {
-        responsive: true,
-        title: {
-            display: true,
-            text: "수익"
-        },
-        tooltips: {
-            mode: 'index',
-            intersect: false,
-        },
-        hover: {
-            mode: 'nearest',
-            intersect: true
-        },
-        scales: {
-            xAxes: [{
-                display: true,
-                scaleLabel: {
-                    display: true,
-                }
-            }],
-            yAxes: [{
-                display: true,
-                ticks: {
-                },
-                scaleLabel: {
-                    display: true,
-                }
+        type: 'line',
+        data: {
+            labels: dataArr1,
+            datasets: [{
+                label: '총 자산 잔고 (KRW)',
+                data: dataArr2,
+                borderColor: "rgb(247,85,16)",
+                backgroundColor: "rgba(247,85,16,0.05)",
+                fill: true,
+                lineTension: 0.2
             }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false, // ★ 이 옵션을 추가해야 카드 영역 밖으로 삐져나가지 않습니다.
+            title: {
+                display: true,
+                text: "자산 변동 추이"
+            },
+            tooltips: {
+                mode: 'index',
+                intersect: false,
+                callbacks: {
+                    label: function(tooltipItem) {
+                        return numberWithCommas(tooltipItem.yLabel) + " 원";
+                    }
+                }
+            },
+            scales: {
+                xAxes: [{
+                    display: true
+                }],
+                yAxes: [{
+                    display: true,
+                    ticks: {
+                        callback: function(value) {
+                            return numberWithCommas(value) + "원";
+                        }
+                    }
+                }]
+            }
         }
-    }
-});
+    });
+}
 </script>
 </body>
 </html>
