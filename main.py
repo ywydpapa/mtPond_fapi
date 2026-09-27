@@ -168,7 +168,6 @@ scheduler = AsyncIOScheduler()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 0시부터 3시간 간격(0, 3, 6, 9, 12, 15, 18, 21시 정각) 실행 등록
     scheduler.add_job(
         job_collect_wallet_balances,
         trigger=CronTrigger(hour="0,3,6,9,12,15,18,21", minute=0),
@@ -180,10 +179,8 @@ async def lifespan(app: FastAPI):
     print("스케줄러 시작됨 (0시 기준 3시간 주기 실행)")
 
     # 서버 시작 직후 1회 실행 (분산 락 덕분에 4개 워커 중 1개만 실행됨)
-    asyncio.create_task(job_collect_wallet_balances())
-
+    # asyncio.create_task(job_collect_wallet_balances())
     yield
-
     scheduler.shutdown()
     await redis_client.aclose()
     print("스케줄러 및 Redis 연결 종료됨")
