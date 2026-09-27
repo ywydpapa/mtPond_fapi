@@ -22,6 +22,7 @@ import httpx
 import jinja2
 from pandas import DataFrame
 import pyupbit
+import redis.asyncio as aioredis  # Redis 비동기 모듈
 import requests
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -53,7 +54,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 # ==========================================
-# 4. 환경 변수 및 DB 세션 설정
+# 4. 환경 변수 및 DB/Redis 설정
 # ==========================================
 dotenv.load_dotenv()
 DATABASE_URL = os.getenv("dburl")
@@ -65,6 +66,98 @@ AsyncSessionLocal = async_sessionmaker(bind=engine, class_=AsyncSession, expire_
 async def get_db():
     async with AsyncSessionLocal() as session:
         yield session
+
+
+# ★ Redis 원격 연결 (특수문자 에러 방지용 개별 변수 우선 파싱)
+REDIS_HOST = os.getenv("REDIS_HOST")
+REDIS_PORT = int(os.getenv("REDIS_PORT", "56379"))
+REDIS_PASSWORD = os.getenv("REDIS_PASSWORD")
+REDIS_DB = int(os.getenv("REDIS_DB", "0"))
+
+if REDIS_HOST:
+    redis_client = aioredis.Redis(
+        host=REDIS_HOST,
+        port=REDIS_PORT,
+        password=REDIS_PASSWORD,
+        db=REDIS_DB,
+        decode_responses=True,
+        socket_timeout=5.0,
+        socket_connect_timeout=5.0,
+        retry_on_timeout=True
+    )
+else:
+    REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    redis_client = aioredis.from_url(
+        REDIS_URL,
+        decode_responses=True,
+        socket_timeout=5.0,
+        socket_connect_timeout=5.0,
+        retry_on_timeout=True
+    )
+
+
+# ==========================================
+# 4b. Redis 동기화 헬퍼 함수
+# ==========================================
+async def sync_mtsetup_to_redis(user_no: int, db: AsyncSession):
+    """DB에서 최신 mtSetup을 읽어와 Redis 캐시를 갱신하고 Pub/Sub 채널로 알림 전송"""
+    try:
+        sql = text("""
+                   SELECT activeYN,
+                          initAmt,
+                          addAmt,
+                          limitAmt,
+                          minMargin,
+                          maxMargin,
+                          tickRate,
+                          tickYN,
+                          lcRate,
+                          lcGap,
+                          maxCoincnt,
+                          martinYN,
+                          stopYN,
+                          stopAutoYN
+                   FROM mtSetup
+                   WHERE userNo = :userno
+                     AND attrib NOT LIKE :attrib LIMIT 1
+                   """)
+        result = await db.execute(sql, {"userno": user_no, "attrib": "%XXX%"})
+        row = result.fetchone()
+        if row:
+            setup_dict = dict(row._mapping)
+            redis_key = f"mtpond:setup:{user_no}"
+            channel_name = f"mtpond:config_channel:{user_no}"
+
+            # 1. Redis 캐시 갱신 (TTL: 1시간)
+            await redis_client.set(redis_key, json.dumps(setup_dict), ex=3600)
+            # 2. 봇 클라이언트들에게 실시간 이벤트 브로드캐스트
+            await redis_client.publish(channel_name, "reload")
+            print(f"[REDIS] mtSetup 동기화 완료 (userNo: {user_no})")
+    except Exception as e:
+        print(f"[REDIS][WARN] mtSetup 동기화 실패 (userNo: {user_no}): {e}")
+
+
+async def sync_excoins_to_redis(user_no: int, db: AsyncSession):
+    """DB에서 최신 제외 코인 목록을 읽어와 Redis Set 캐시를 갱신"""
+    try:
+        sql = text("SELECT DISTINCT market FROM exCoinlist WHERE userNo IN (0, :userno) AND attrib NOT LIKE :attrib")
+        result = await db.execute(sql, {"userno": user_no, "attrib": "%XXX%"})
+        rows = result.fetchall()
+        ex_markets = [r[0] for r in rows if r and r[0]]
+
+        redis_key = f"mtpond:excoins:{user_no}"
+        # 기존 Set 삭제 후 재등록
+        await redis_client.delete(redis_key)
+        if ex_markets:
+            await redis_client.sadd(redis_key, *ex_markets)
+            await redis_client.expire(redis_key, 3600)
+
+        # 봇들에게 알림 전송
+        channel_name = f"mtpond:config_channel:{user_no}"
+        await redis_client.publish(channel_name, "reload_excoins")
+        print(f"[REDIS] exCoins 동기화 완료: {ex_markets} (userNo: {user_no})")
+    except Exception as e:
+        print(f"[REDIS][WARN] exCoins 동기화 실패 (userNo: {user_no}): {e}")
 
 
 # ==========================================
@@ -92,10 +185,10 @@ async def lifespan(app: FastAPI):
     yield
 
     scheduler.shutdown()
-    print("스케줄러 종료됨")
+    await redis_client.aclose()
+    print("스케줄러 및 Redis 연결 종료됨")
 
 
-# FastAPI 인스턴스는 단 한 번만 선언합니다.
 app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(SessionMiddleware, secret_key="supersecretkey")
@@ -507,6 +600,8 @@ async def setonoff(uno: int, yesno: str, db: AsyncSession):
         sql = text("UPDATE mtSetup SET activeYN = :yesno where userNo=:userno AND attrib not like :xattr")
         await db.execute(sql, {"userno": uno, "yesno": yesno, "xattr": '%XXXUP%'})
         await db.commit()
+        # ★ DB 갱신 후 Redis 캐시 동기화 및 PubSub 알림
+        await sync_mtsetup_to_redis(uno, db)
     except Exception as e:
         print('거래 ON/OFF 오류:', e)
 
@@ -626,6 +721,8 @@ async def setupmymtpondset(uno, setkey, initbid, addbid, limitbid, minmargin, cu
                 "losscut": cutrate
             })
             await db.commit()
+            # ★ DB 저장 성공 시 Redis 동기화 및 봇 알림
+            await sync_mtsetup_to_redis(uno, db)
             return True
         except Exception as e:
             print('mtPond 트레이딩 설정 저장 오류:', e)
@@ -1169,6 +1266,7 @@ async def setupmtponds(
     minm = minmargin.replace(',', '') if minmargin else '0'
 
     await erasemtpondsetup(uno, setkey, db)
+    # setupmymtpondset 내부에서 DB 저장 후 Redis 동기화가 호출됩니다.
     await setupmymtpondset(uno, setkey, initp, addp, limitp, minm, lcr, db)
     return RedirectResponse(url=f"/mymtpondstat/{uno}/{setkey}", status_code=303)
 
@@ -1279,21 +1377,41 @@ async def upbittop30(request: Request, uno: int, setkey: str, db: AsyncSession =
     })
 
 
+# ★ [수정] Redis 캐시 우선 조회 엔드포인트
 @app.get('/api/mtpondsetup/{userno}')
 async def mtpondsetup_all(userno: int, db: AsyncSession = Depends(get_db)):
+    redis_key = f"mtpond:setup:{userno}"
+    try:
+        cached = await redis_client.get(redis_key)
+        if cached:
+            return jsonable_encoder([json.loads(cached)])
+    except Exception as e:
+        print(f"[REDIS][WARN] 캐시 조회 실패: {e}")
+
+    # 캐시 미스 시 DB 조회
     sql = text(
         "SELECT activeYN,initAmt,addAmt,limitAmt,minMargin,maxMargin,tickRate,tickYN,lcRate,lcGap,maxCoincnt, martinYN, stopYN, stopAutoYN FROM mtSetup WHERE userNo = :userno AND attrib NOT LIKE :attrib")
     result = await db.execute(sql, {"userno": userno, "attrib": "%XXX%"})
     rows = result.fetchall()
     data = [dict(r._mapping) for r in rows]
+
+    # 캐시에 채워넣기
+    if data:
+        try:
+            await redis_client.set(redis_key, json.dumps(data[0]), ex=3600)
+        except Exception:
+            pass
     return jsonable_encoder(data)
 
 
+# ★ [수정] ON/OFF 토글 시 DB 업데이트 및 Redis 즉시 전파
 @app.post("/api/mtpondsetonoff/{userno}/{active}")
 async def toggle_active_simple(userno: int, active: str, db: AsyncSession = Depends(get_db)):
     active_norm = active.strip().upper()
     if active_norm not in ("Y", "N"):
         raise HTTPException(status_code=400, detail="active 값은 Y 또는 N 이어야 합니다.")
+
+    # setonoff 함수 내부에서 sync_mtsetup_to_redis 호출됨
     await setonoff(userno, active_norm, db)
     return {"userNo": userno, "activeYN": active_norm, "updated": True}
 
@@ -1351,6 +1469,7 @@ async def excoin(request: Request, userNo: int, setkey: str, db: AsyncSession = 
     })
 
 
+# ★ [수정] 제외 코인 변경 시 Redis Set 갱신 및 PubSub 전파
 @app.post("/setexCoin/{userNo}")
 async def setexcoin(
         request: Request,
@@ -1366,10 +1485,14 @@ async def setexcoin(
             query = text("INSERT INTO exCoinlist (userNo, market) values (:userNo, :market)")
             await db.execute(query, {"userNo": userNo, "market": coin})
         await db.commit()
+
+        # ★ DB 갱신 후 Redis Set 업데이트 및 알림
+        await sync_excoins_to_redis(userNo, db)
     except Exception as e:
         await db.rollback()
         print("setexcoin error:", e)
     return RedirectResponse(url=f"/excoinlist/{userNo}/{request.session.get('setKey')}", status_code=303)
+
 
 @app.get("/balancegraph/{uno}")
 async def balance_graph(
@@ -1378,7 +1501,6 @@ async def balance_graph(
         user_session: int = Depends(require_login),
         db: AsyncSession = Depends(get_db)
 ):
-    # 본인 세션 검증
     if uno != user_session:
         return RedirectResponse(url="/", status_code=303)
 
@@ -1397,21 +1519,18 @@ async def balance_graph(
     rows = result.fetchall()
 
     items = []
-    tval = []  # 차트 X축 (일시)
-    ival = []  # 차트 Y축 (총 자산 잔고)
+    tval = []
+    ival = []
 
     for r in rows:
-        # timeStamp 포맷팅 (YYYY-MM-DD HH:MM)
         ts_str = r[1].strftime("%Y-%m-%d %H:%M") if isinstance(r[1], datetime) else str(r[1])
         total_krw = int(r[2]) if r[2] is not None else 0
-
-        # 템플릿 테이블용 리스트 ([logNo, 일시, 총 잔고])
         items.append([r[0], ts_str, total_krw])
         tval.append(ts_str)
         ival.append(total_krw)
 
     return templates.TemplateResponse(
-        "/trade/incsum.html",  # 파일 확장자가 .html인지 확인 필요 (.mtml -> .html)
+        "/trade/incsum.html",
         {
             "request": request,
             "user_No": uno,
