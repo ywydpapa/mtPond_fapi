@@ -179,7 +179,7 @@ async def lifespan(app: FastAPI):
     print("스케줄러 시작됨 (0시 기준 3시간 주기 실행)")
 
     # 서버 시작 직후 1회 실행 (분산 락 덕분에 4개 워커 중 1개만 실행됨)
-    # asyncio.create_task(job_collect_wallet_balances())
+    asyncio.create_task(job_collect_wallet_balances())
     yield
     scheduler.shutdown()
     await redis_client.aclose()
