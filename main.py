@@ -10,6 +10,7 @@ import os
 import random
 import time
 from typing import Dict, List, Optional
+import httpx
 
 # ==========================================
 # 2. 서드파티 라이브러리
@@ -52,6 +53,23 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+
+BB_PATTERNS_API_URL = "http://becog.iptime.org:8088/api/bb-patterns?limit=300"
+
+async def fetch_bb_patterns_dict() -> dict:
+    try:
+        async with httpx.AsyncClient(timeout=4.0) as client:
+            resp = await client.get(BB_PATTERNS_API_URL)
+            if resp.status_code == 200:
+                data = resp.json()
+                coins = data.get("coins", [])
+                return {
+                    c["market"].replace("KRW-", ""): c
+                    for c in coins if "market" in c
+                }
+    except Exception as e:
+        print(f"[fetch_bb_patterns_dict] 호출 실패: {e}")
+    return {}
 
 # ==========================================
 # 4. 환경 변수 및 DB/Redis 설정
@@ -1008,6 +1026,8 @@ async def my_balance(request: Request, uno: int, user_session: int = Depends(req
     userLicense = request.session.get("License")
     mycoins = await checkwallet(uno, setKey, db)
     cprices = await get_current_prices()
+    bb_patterns = await fetch_bb_patterns_dict()
+
     return templates.TemplateResponse(
         "wallet/mywallet.html",
         {
@@ -1019,7 +1039,8 @@ async def my_balance(request: Request, uno: int, user_session: int = Depends(req
             "license": userLicense,
             "mycoins": mycoins,
             "myavgp": None,
-            "cuprices": cprices
+            "cuprices": cprices,
+            "bb_patterns": bb_patterns  # 템플릿으로 전달
         }
     )
 

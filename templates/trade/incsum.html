@@ -2,6 +2,16 @@
 <html lang="en">
 <head>
         {% include '/comm/adheader.html' %}
+        <style>
+            .badge-daily {
+                background-color: #e2e8f0;
+                color: #475569;
+                font-size: 0.75rem;
+                padding: 2px 6px;
+                border-radius: 4px;
+                margin-left: 4px;
+            }
+        </style>
 </head>
 <body id="page-top">
     <!-- Page Wrapper -->
@@ -14,10 +24,7 @@
                 {% include '/comm/adtopbar.html' %}
                 <!-- Begin Page Content -->
                 <div class="container-fluid">
-                    <!-- Page Heading -->
-                    <!-- Page Heading -->
-                    <!-- DataTales Example -->
-                <div class = "row">
+                <div class="row">
                 <div class="col-lg-6">
                     <div class="card shadow mb-4">
                         <div class="card-header py-3">
@@ -27,48 +34,40 @@
                             <div class="table-responsive">
                                 <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
                                     <thead>
-                                        <tr  style="text-align: center">
+                                        <tr style="text-align: center">
                                             <th>집계 일자</th>
                                             <th>잔고</th>
                                             <th>차액</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        {% for item in items %}
-                                         <tr style="text-align: right">
-                                         <td class = "coins" style="text-align: center" >{{ item[1] }}</td>
-                                         <td class="vola">{{ item[2] }}</td>
-                                         <td class="volb"></td>
-                                         </tr>
-                                        {% endfor %}
-                                    <tr>
-                                        <td colspan="2" style="text-align: center; background-color: linen "> 차액 합계</td>
-                                        <td id="suminc" style="text-align: right; background-color: linen"></td>
-                                    </tr>
+                                    <tbody id="tableBody">
+                                        <!-- 자바스크립트로 오늘/어제 상세 및 과거 일별 요약 행 렌더링 -->
                                     </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td colspan="2" style="text-align: center; background-color: linen; font-weight: bold;"> 차액 합계</td>
+                                            <td id="suminc" style="text-align: right; background-color: linen; font-weight: bold;"></td>
+                                        </tr>
+                                    </tfoot>
                                 </table>
                             </div>
                         </div>
                     </div>
                 </div>
-                    <div class="col-lg-6">
-                        <div class="card shadow mb-4">
-                            <div class="card-header py-3">
-                                <h6 class="m-0 font-weight-bold text-primary">수익현황</h6>
-                            </div>
+                <div class="col-lg-6">
+                    <div class="card shadow mb-4">
+                        <div class="card-header py-3">
+                            <h6 class="m-0 font-weight-bold text-primary">수익현황</h6>
+                        </div>
                         <div class="card-body">
                             <div class="chart-area" style="position: relative; height: 320px;">
                                 <canvas id="myChart1"></canvas>
                             </div>
                         </div>
-                        <div class="card-footer">
-                        </div>
                     </div>
                 </div>
-                <!-- /.container-fluid -->
             </div>
             <!-- End of Main Content -->
-             <!-- Footer -->
             <footer class="sticky-footer bg-white">
                 <div class="container my-auto">
                     <div class="copyright text-center my-auto">
@@ -76,27 +75,23 @@
                     </div>
                 </div>
             </footer>
-            <!-- End of Footer -->
         </div>
-        <!-- End of Content Wrapper -->
     </div>
-    <!-- End of Page Wrapper -->
-    <!-- Scroll to Top Button-->
     <a class="scroll-to-top rounded" href="#page-top">
         <i class="fas fa-angle-up"></i>
     </a>
-     <!-- Bootstrap core JavaScript-->
 
     {% include '/comm/adscript.html' %}
     {% include '/comm/adscriptchart.html' %}
 <script>
-    // 서버에서 전달받은 원본 데이터 (X축: 일시, Y축: 총 잔고)
+    // 서버에서 전달받은 원본 데이터
     var dataArr1 = {{ tval | safe }};
     var dataArr2 = {{ ival | safe }};
+    // 템플릿의 items 리스트를 JSON 형태로 변환
+    var rawItems = {{ items | tojson | safe }};
 
     $(document).ready(function () {
-        setcurr();
-        calbenifit();
+        buildTable();
         renderChart();
     });
 
@@ -105,83 +100,141 @@
         return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     }
 
-    function setcurr(){
-        $(".vola").each(function () {
-            var val = parseInt($(this).text().replace(/,/g, '')) || 0;
-            $(this).text(numberWithCommas(val));
-        });
+    // 날짜 포맷팅 유틸 (YYYY-MM-DD 반환)
+    function getDateString(d) {
+        var year = d.getFullYear();
+        var month = ('0' + (d.getMonth() + 1)).slice(-2);
+        var day = ('0' + d.getDate()).slice(-2);
+        return year + '-' + month + '-' + day;
     }
 
-    function calbenifit(){
-        var $Aarr = $(".vola");
-        var $Barr = $(".volb");
+    function buildTable() {
+        if (!rawItems || rawItems.length === 0) return;
+
+        // 1. 기준 일자 계산 (오늘, 어제, 30일 전 제한일자)
+        var today = new Date();
+        var yesterday = new Date();
+        yesterday.setDate(today.getDate() - 1);
+
+        var limitDate = new Date();
+        limitDate.setDate(today.getDate() - 30); // 최근 30일 제한
+
+        var todayStr = getDateString(today);
+        var yestStr = getDateString(yesterday);
+        var limitDateStr = getDateString(limitDate);
+
+        var processedList = [];
+        var pastDailyMap = {}; // 30일 이내 과거 일자별 데이터 저장용
+
+        rawItems.forEach(function (item) {
+            var timeStr = item[1].toString();
+            var datePart = timeStr.substring(0, 10); // "YYYY-MM-DD"
+            var balance = parseInt(item[2]) || 0;
+
+            // ★ 30일 이전의 오래된 데이터는 제외
+            if (datePart < limitDateStr) {
+                return;
+            }
+
+            if (datePart === todayStr || datePart === yestStr) {
+                // 오늘과 어제: 상세 내역(시간대별) 그대로 유지
+                processedList.push({
+                    displayTime: timeStr,
+                    balance: balance,
+                    isDailySummary: false
+                });
+            } else {
+                // 오늘/어제 제외 최근 30일 이내: 일자별 마감 잔고 1건으로 축약
+                pastDailyMap[datePart] = {
+                    displayTime: datePart,
+                    balance: balance,
+                    isDailySummary: true
+                };
+            }
+        });
+
+        // 과거 일자별 요약 데이터를 리스트에 합치기
+        var pastDays = Object.keys(pastDailyMap).sort();
+        pastDays.forEach(function (d) {
+            processedList.push(pastDailyMap[d]);
+        });
+
+        // 일시 기준 정렬
+        processedList.sort(function(a, b) {
+            return a.displayTime.localeCompare(b.displayTime);
+        });
+
+        // 2. 테이블 렌더링 및 30일 구간 내 차액 계산
+        var tbodyHtml = "";
         var suminc = 0;
 
-        for (var i = 0; i < $Aarr.length; i++) {
-            var cur = parseInt($Aarr[i].innerText.replace(/,/g, '')) || 0;
-            var prev = (i === 0) ? cur : (parseInt($Aarr[i - 1].innerText.replace(/,/g, '')) || 0);
-
-            var diff = cur - prev; // 이전 회차 대비 변동액
+        for (var i = 0; i < processedList.length; i++) {
+            var cur = processedList[i].balance;
+            var prev = (i === 0) ? cur : processedList[i - 1].balance;
+            var diff = cur - prev;
             suminc += diff;
 
-            // 변동액 색상 구분 (+ 빨강, - 파랑)
+            var diffText = "0";
             if (diff > 0) {
-                $Barr[i].innerHTML = "<span style='color:red;'>+" + numberWithCommas(diff) + "</span>";
+                diffText = "<span style='color:red;'>+" + numberWithCommas(diff) + "</span>";
             } else if (diff < 0) {
-                $Barr[i].innerHTML = "<span style='color:blue;'>" + numberWithCommas(diff) + "</span>";
-            } else {
-                $Barr[i].innerText = "0";
+                diffText = "<span style='color:blue;'>" + numberWithCommas(diff) + "</span>";
             }
+
+            var badge = processedList[i].isDailySummary ? "<span class='badge-daily'>일별마감</span>" : "";
+
+            tbodyHtml += "<tr style='text-align: right;'>";
+            tbodyHtml += "  <td style='text-align: center;'>" + processedList[i].displayTime + " " + badge + "</td>";
+            tbodyHtml += "  <td>" + numberWithCommas(cur) + "</td>";
+            tbodyHtml += "  <td>" + diffText + "</td>";
+            tbodyHtml += "</tr>";
         }
+
+        $("#tableBody").html(tbodyHtml);
         $("#suminc").html(numberWithCommas(suminc));
     }
 
     function renderChart() {
-    new Chart(document.getElementById("myChart1"), {
-        type: 'line',
-        data: {
-            labels: dataArr1,
-            datasets: [{
-                label: '총 자산 잔고 (KRW)',
-                data: dataArr2,
-                borderColor: "rgb(247,85,16)",
-                backgroundColor: "rgba(247,85,16,0.05)",
-                fill: true,
-                lineTension: 0.2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false, // ★ 이 옵션을 추가해야 카드 영역 밖으로 삐져나가지 않습니다.
-            title: {
-                display: true,
-                text: "자산 변동 추이"
+        new Chart(document.getElementById("myChart1"), {
+            type: 'line',
+            data: {
+                labels: dataArr1,
+                datasets: [{
+                    label: '총 자산 잔고 (KRW)',
+                    data: dataArr2,
+                    borderColor: "rgb(247,85,16)",
+                    backgroundColor: "rgba(247,85,16,0.05)",
+                    fill: true,
+                    lineTension: 0.2
+                }]
             },
-            tooltips: {
-                mode: 'index',
-                intersect: false,
-                callbacks: {
-                    label: function(tooltipItem) {
-                        return numberWithCommas(tooltipItem.yLabel) + " 원";
-                    }
-                }
-            },
-            scales: {
-                xAxes: [{
-                    display: true
-                }],
-                yAxes: [{
-                    display: true,
-                    ticks: {
-                        callback: function(value) {
-                            return numberWithCommas(value) + "원";
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                title: { display: true, text: "자산 변동 추이" },
+                tooltips: {
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        label: function(tooltipItem) {
+                            return numberWithCommas(tooltipItem.yLabel) + " 원";
                         }
                     }
-                }]
+                },
+                scales: {
+                    xAxes: [{ display: true }],
+                    yAxes: [{
+                        display: true,
+                        ticks: {
+                            callback: function(value) {
+                                return numberWithCommas(value) + "원";
+                            }
+                        }
+                    }]
+                }
             }
-        }
-    });
-}
+        });
+    }
 </script>
 </body>
 </html>
