@@ -1576,3 +1576,87 @@ async def balance_graph(
             "ival": json.dumps(ival),
         }
     )
+
+
+# ==========================================
+# 자산 추이 그래프 데이터 조회 API
+# ==========================================
+@app.get("/api/balancegraph/{uno}")
+async def api_balance_graph(
+    uno: int,
+    setkey: Optional[str] = Query(None),
+    limit: int = Query(120, ge=1, le=500),
+    request: Request = None,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    지갑 자산 추이 그래프용 JSON API
+    - 웹 세션(user_No) 또는 쿼리 파라미터(?setkey=...)를 통한 이중 인증 지원
+    """
+    # 1. 인증 검증 (세션 확인 또는 setKey 확인)
+    session_user = request.session.get("user_No") if request else None
+    is_authenticated = False
+
+    if session_user and session_user == uno:
+        is_authenticated = True
+    elif setkey:
+        is_authenticated = await check_setkey(uno, setkey, db)
+
+    if not is_authenticated:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="인증에 실패했거나 접근 권한이 없습니다."
+        )
+
+    try:
+        # 2. 데이터베이스 조회 (원화 잔고 및 총 자산 추이)
+        sql = text("""
+            SELECT logNo, timeStamp, totalKRW, balanceKRW
+            FROM walletBalance
+            WHERE userNo = :userno AND attrib NOT LIKE :xattr
+            ORDER BY timeStamp ASC
+            LIMIT :limit
+        """)
+        result = await db.execute(sql, {"userno": uno, "xattr": "%XXX%", "limit": limit})
+        rows = result.fetchall()
+
+        items = []
+        labels = []       # X축: 일시 (YYYY-MM-DD HH:MM)
+        total_krw_list = [] # Y축 1: 총 평가금액
+        balance_krw_list = [] # Y축 2: 원화 보유금
+
+        for r in rows:
+            ts_str = r[1].strftime("%Y-%m-%d %H:%M") if isinstance(r[1], datetime) else str(r[1])
+            tot_krw = int(r[2]) if r[2] is not None else 0
+            bal_krw = int(r[3]) if r[3] is not None else 0
+
+            items.append({
+                "logNo": r[0],
+                "timeStamp": ts_str,
+                "totalKRW": tot_krw,
+                "balanceKRW": bal_krw
+            })
+            labels.append(ts_str)
+            total_krw_list.append(tot_krw)
+            balance_krw_list.append(bal_krw)
+
+        return JSONResponse({
+            "success": True,
+            "userNo": uno,
+            "count": len(items),
+            "data": {
+                "items": items,
+                "chart": {
+                    "labels": labels,              # 차트 X축 리스트
+                    "totalKRW": total_krw_list,    # 차트 Y축 데이터 (총자산)
+                    "balanceKRW": balance_krw_list # 차트 Y축 데이터 (순수원화)
+                }
+            }
+        })
+
+    except Exception as e:
+        print(f"[API ERROR] balancegraph 조회 실패 (uno: {uno}):", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="데이터 조회 중 오류가 발생했습니다."
+        )
