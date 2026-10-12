@@ -1584,32 +1584,13 @@ async def balance_graph(
 @app.get("/api/balancegraph/{uno}")
 async def api_balance_graph(
     uno: int,
-    setkey: Optional[str] = Query(None),
     limit: int = Query(120, ge=1, le=500),
-    request: Request = None,
     db: AsyncSession = Depends(get_db)
 ):
     """
-    지갑 자산 추이 그래프용 JSON API
-    - 웹 세션(user_No) 또는 쿼리 파라미터(?setkey=...)를 통한 이중 인증 지원
+    지갑 자산 추이 그래프용 JSON API (공개 접근 허용)
     """
-    # 1. 인증 검증 (세션 확인 또는 setKey 확인)
-    session_user = request.session.get("user_No") if request else None
-    is_authenticated = False
-
-    if session_user and session_user == uno:
-        is_authenticated = True
-    elif setkey:
-        is_authenticated = await check_setkey(uno, setkey, db)
-
-    if not is_authenticated:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="인증에 실패했거나 접근 권한이 없습니다."
-        )
-
     try:
-        # 2. 데이터베이스 조회 (원화 잔고 및 총 자산 추이)
         sql = text("""
             SELECT logNo, timeStamp, totalKRW, balanceKRW
             FROM walletBalance
@@ -1621,9 +1602,9 @@ async def api_balance_graph(
         rows = result.fetchall()
 
         items = []
-        labels = []       # X축: 일시 (YYYY-MM-DD HH:MM)
-        total_krw_list = [] # Y축 1: 총 평가금액
-        balance_krw_list = [] # Y축 2: 원화 보유금
+        labels = []
+        total_krw_list = []
+        balance_krw_list = []
 
         for r in rows:
             ts_str = r[1].strftime("%Y-%m-%d %H:%M") if isinstance(r[1], datetime) else str(r[1])
@@ -1647,9 +1628,9 @@ async def api_balance_graph(
             "data": {
                 "items": items,
                 "chart": {
-                    "labels": labels,              # 차트 X축 리스트
-                    "totalKRW": total_krw_list,    # 차트 Y축 데이터 (총자산)
-                    "balanceKRW": balance_krw_list # 차트 Y축 데이터 (순수원화)
+                    "labels": labels,
+                    "totalKRW": total_krw_list,
+                    "balanceKRW": balance_krw_list
                 }
             }
         })
