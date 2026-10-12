@@ -9,6 +9,7 @@
     padding-bottom: 0;
     vertical-align: middle;
     line-height: 1.2;
+    white-space: nowrap; /* 모바일 반응형 스크롤 시 셀 줄바꿈 방지 */
   }
   .change-up { color: #22c55e; font-size: 1.2em; }
   .change-down { color: #ef4444; font-size: 1.2em; }
@@ -25,53 +26,34 @@
     display: inline-block;
   }
 
-  /* 테이블 스크롤 컨테이너 바깥으로 툴팁이 잘리지 않도록 설정 */
+  /* 1. 반응형 테이블의 가로 스크롤 정상 복원 */
   .table-responsive {
-    overflow: visible !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
   }
 
-  /* === 볼린저 밴드 풍선말(Tooltip) 수정 버전 === */
+  /* 2. 볼린저 밴드 풍선말(Tooltip) 래퍼 */
   .coin-tooltip-wrap {
-    position: relative;
     display: inline-block;
     cursor: pointer;
   }
 
+  /* 테이블 스크롤에 잘리지 않도록 화면 기준 fixed 팝업으로 변경 */
   .coin-tooltip-wrap .bb-tooltip-content {
-    visibility: hidden;
-    opacity: 0;
-    position: absolute;
-    z-index: 9999;
-    top: 100%;
-    left: 10px; /* 중앙 정렬 대신 좌측 기준으로 배치하여 왼쪽 잘림 방지 */
-    width: 320px; /* 전체 텍스트가 여유 있게 들어가도록 너비 확장 */
+    display: none;
+    position: fixed;
+    z-index: 99999;
+    width: 310px;
     background-color: #0f172a;
     color: #f8fafc;
     text-align: left;
     border-radius: 8px;
     padding: 10px 14px;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.6), 0 4px 10px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.7), 0 4px 10px rgba(0, 0, 0, 0.5);
     border: 1px solid #334155;
     font-size: 11.5px;
-    transition: opacity 0.15s ease-in-out, visibility 0.15s ease-in-out;
-    pointer-events: none;
+    pointer-events: none; /* 터치나 클릭 스크롤 방해 차단 */
     white-space: normal;
-  }
-
-  /* 툴팁 상단 꼬리표 (말풍선 화살표) 위치를 좌측에 맞춤 */
-  .coin-tooltip-wrap .bb-tooltip-content::after {
-    content: "";
-    position: absolute;
-    bottom: 100%;
-    left: 20px;
-    border-width: 6px;
-    border-style: solid;
-    border-color: transparent transparent #0f172a transparent;
-  }
-
-  .coin-tooltip-wrap:hover .bb-tooltip-content {
-    visibility: visible;
-    opacity: 1;
   }
 
   .bb-tt-header {
@@ -83,7 +65,6 @@
     font-weight: 700;
   }
 
-  /* 컬럼 너비 명확히 분배: [주기 38px] [패턴 자동] [%B 52px] [변동폭 55px] */
   .bb-tt-grid {
     display: grid;
     grid-template-columns: 38px 1fr 52px 55px;
@@ -141,7 +122,6 @@
                                         <div class="coin-tooltip-wrap">
                                             <a href="https://upbit.com/exchange?code=CRIX.UPBIT.KRW-{{ coin['currency'] }}" target="_blank">{{ coin["currency"] }}</a>
 
-                                            <!-- 마우스 오버 시 표시되는 볼린저밴드 말풍선 -->
                                             {% if coin["currency"] != "KRW" and bb_patterns.get(coin["currency"]) %}
                                                 {% set bb = bb_patterns.get(coin["currency"]) %}
                                                 <div class="bb-tooltip-content">
@@ -175,11 +155,16 @@
                                     <td class="volb" style="text-align: right">{{ coin["locked"] }}</td>
                                     <td class="aprice" style="text-align: right"> {% if coin["currency"] == 'KRW' %}1{% else %}{{ coin["avg_buy_price"] }}{% endif %}</td>
                                     <td class="cprice" style="text-align: right">
+                                        {% if coin["currency"] == 'KRW' %} 1 {% else %}
+                                        {% set matched_price = namespace(found=false) %}
                                         {% for cuprice in cuprices %}
                                             {% if cuprice["market"].split('-')[1] == coin["currency"] %}
                                                 {{ cuprice["trade_price"] }}
-                                            {% endif %}{% if coin["currency"] == 'KRW' %}1{% endif %}
+                                                {% set matched_price.found = true %}
+                                            {% endif %}
                                         {% endfor %}
+                                        {% if not matched_price.found %}-{% endif %}
+                                        {% endif %}
                                     </td>
                                     <td class="change"> </td>
                                     <td class="cvalue" style="text-align: right"></td>
@@ -187,18 +172,20 @@
                                     <td class="balancerate" style="text-align: right"></td>
                                     <td class="balancediff" style="text-align: right"></td>
                                     {% if coin["currency"]!="KRW" %}
-                                    <td style="display: flex; justify-content: space-between;">
-                                        <button class="btn form-control btn-primary" style="width: 48%;"
-                                                onclick="sellcoin( {{ user_No }},{{ setkey }},'{{ coin["currency"] }}',{{ coin["balance"] }})">매도</button>
-                                        <button class="btn form-control btn-danger" style="width: 48%;"
-                                                onclick="buycoin( {{ user_No }},{{ setkey }},'{{ coin["currency"] }}')">매수</button>
+                                    <td style="white-space: nowrap;">
+                                        <div style="display: flex; gap: 4px; min-width: 140px;">
+                                            <button class="btn form-control btn-primary" style="flex: 1;"
+                                                    onclick="sellcoin( {{ user_No }},{{ setkey }},'{{ coin["currency"] }}',{{ coin["balance"] }})">매도</button>
+                                            <button class="btn form-control btn-danger" style="flex: 1;"
+                                                    onclick="buycoin( {{ user_No }},{{ setkey }},'{{ coin["currency"] }}')">매수</button>
+                                        </div>
                                     </td>
                                     {% elif coin["currency"] == "KRW" %}
-                                    <td style="text-align: center">
-                                        <div style="display: flex;align-items: center;justify-content: center;gap: 1rem;margin-left: -.75rem;margin-right: -.75rem;">
+                                    <td style="text-align: center; white-space: nowrap;">
+                                        <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; min-width: 250px;">
                                             <div>매도</div>
                                             <div>
-                                                <select class="form-control" name="sellrate" id="sellrate">
+                                                <select class="form-control" name="sellrate" id="sellrate" style="width: 85px;">
                                                     <option value=1>100%</option>
                                                     <option value=2>50%</option>
                                                     <option value=4>25%</option>
@@ -211,7 +198,7 @@
                                             <div>
                                                 <input id="buyamt" name="buyamt" class="form-control" type="text"
                                                        value="200000" placeholder="200,000" max="2000000" min="100000"
-                                                       step="50000" style="text-align: right"
+                                                       step="50000" style="text-align: right; width: 110px;"
                                                        oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');"/>
                                             </div>
                                         </div>
@@ -224,7 +211,7 @@
                                     <td id="wonsum" style="text-align: right"></td>
                                     <td id="estsum" style="text-align: right"></td>
                                     <td id="sumdiff" style="text-align: right"></td>
-                                    <td colspan="3">
+                                    <td colspan="2">
                                         <div id="refresh-timer" style="font-weight:bold; color:#2563eb; text-align: center; vertical-align: middle;">
                                             리프레시까지 남은 시간: <span id="refresh-remaining"></span>
                                         </div>
@@ -251,9 +238,24 @@
 {% include '/comm/adscript.html' %}
 
 <script>
+// 1. Jinja2 변수 안전 파싱 (문법 에러 방지)
+let userNo = parseInt("{{ user_No | default(0) }}", 10);
+let setKey = "{{ setkey | default('') }}";
+
+let bbPatternsCache = {};
+try {
+    // tojson 필터를 안전한 JSON 문자열로 처리
+    let rawPatterns = {{ (bb_patterns | default({})) | tojson | safe }};
+    if (rawPatterns) bbPatternsCache = rawPatterns;
+} catch (e) {
+    console.warn("bbPatternsCache 파싱 실패:", e);
+}
+
 let hotMarkets = [];
-// 템플릿 렌더링 시 주입된 BB 패턴 데이터를 JS 전역 객체로 보관
-let bbPatternsCache = {{ bb_patterns | tojson | safe }} || {};
+let refreshIntervalSec = 300;
+let refreshRemaining = refreshIntervalSec;
+let refreshTimerInterval = null;
+let updateTimer = null;
 
 $(document).ready(function () {
     calcvalue();
@@ -262,11 +264,41 @@ $(document).ready(function () {
 
     fetchHotCoins();
     setInterval(fetchHotCoins, 60000);
+
+    bindTooltipEvents();
 });
 
-let refreshIntervalSec = 300;
-let refreshRemaining = refreshIntervalSec;
-let refreshTimerInterval = null;
+function bindTooltipEvents() {
+    $(document).off("mouseenter mouseleave", ".coin-tooltip-wrap");
+
+    $(document).on("mouseenter", ".coin-tooltip-wrap", function(e) {
+        let $wrap =$(this);
+        let $tt =$wrap.find(".bb-tooltip-content");
+        if ($tt.length === 0) return;
+
+        let rect = this.getBoundingClientRect();
+        let top = rect.bottom + 6;
+        let left = rect.left;
+
+        if (left + 320 > window.innerWidth) {
+            left = window.innerWidth - 330;
+        }
+        if (left < 10) left = 10;
+
+        $tt.css({
+            top: top + "px",
+            left: left + "px"
+        }).stop(true, true).fadeIn(120);
+    });
+
+    $(document).on("mouseleave", ".coin-tooltip-wrap", function() {
+        $(this).find(".bb-tooltip-content").stop(true, true).fadeOut(100);
+    });
+
+    $(".table-responsive, window").on("scroll", function() {
+        $(".bb-tooltip-content").hide();
+    });
+}
 
 function startRefreshTimer() {
     updateRefreshDisplay();
@@ -291,7 +323,7 @@ function fetchHotCoins() {
             }
         },
         error: function(err) {
-            console.error("HOT 코인 목록을 가져오는데 실패했습니다.", err);
+            console.error("HOT 코인 목록 조회 실패:", err);
         }
     });
 }
@@ -319,7 +351,6 @@ function updateRefreshDisplay() {
     $("#refresh-remaining").text(text);
 }
 
-// 툴팁 HTML 생성 헬퍼 함수
 function generateTooltipHtml(currency) {
     if (currency === "KRW" || !bbPatternsCache[currency]) return "";
     let bb = bbPatternsCache[currency];
@@ -374,24 +405,26 @@ function updateWalletTable(mycoins) {
             <td class="vola" style="text-align: right">${numberWithCommas(coin.balance)}</td>
             <td class="volb" style="text-align: right">${numberWithCommas(coin.locked)}</td>
             <td class="aprice" style="text-align: right">${isKRW ? 1 : numberWithCommas(coin.avg_buy_price)}</td>
-            <td class="cprice" style="text-align: right">-</td>
+            <td class="cprice" style="text-align: right">${isKRW ? 1 : '-'}</td>
             <td class="change"></td>
             <td class="cvalue" style="text-align: right"></td>
             <td class="balanceprice" style="text-align: right"></td>
             <td class="balancerate" style="text-align: right"></td>
             <td class="balancediff" style="text-align: right"></td>
             ${!isKRW
-                ? `<td style="display: flex; justify-content: space-between;">
-                    <button class="btn form-control btn-primary" style="width: 48%;"
-                        onclick="sellcoin(${userNo},'${setKey}','${coin.currency}',${coin.balance})">매도</button>
-                    <button class="btn form-control btn-danger" style="width: 48%;"
-                        onclick="buycoin(${userNo},'${setKey}','${coin.currency}')">매수</button>
+                ? `<td style="white-space: nowrap;">
+                    <div style="display: flex; gap: 4px; min-width: 140px;">
+                        <button class="btn form-control btn-primary" style="flex: 1;"
+                            onclick="sellcoin(${userNo},'${setKey}','${coin.currency}',${coin.balance})">매도</button>
+                        <button class="btn form-control btn-danger" style="flex: 1;"
+                            onclick="buycoin(${userNo},'${setKey}','${coin.currency}')">매수</button>
+                    </div>
                 </td>`
-                : `<td style="text-align: center">
-                    <div style="display: flex;align-items: center;justify-content: center;gap: 1rem;margin-left: -.75rem;margin-right: -.75rem;">
+                : `<td style="text-align: center; white-space: nowrap;">
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; min-width: 250px;">
                         <div>매도</div>
                         <div>
-                            <select class="form-control" name="sellrate" id="sellrate">
+                            <select class="form-control" name="sellrate" id="sellrate" style="width: 85px;">
                                 <option value=1>100%</option>
                                 <option value=2>50%</option>
                                 <option value=4>25%</option>
@@ -404,7 +437,7 @@ function updateWalletTable(mycoins) {
                         <div>
                             <input id="buyamt" name="buyamt" class="form-control" type="text"
                                 value="200000" placeholder="200,000" max="2000000" min="100000"
-                                step="50000" style="text-align: right"
+                                step="50000" style="text-align: right; width: 110px;"
                                 oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');"/>
                         </div>
                     </div>
@@ -421,7 +454,7 @@ function updateWalletTable(mycoins) {
 
 function refreshWalletTable() {
     $.get(`/rest_getwallet/${userNo}/${setKey}`, function(res) {
-        if (res.success && res.data) {
+        if (res && res.success && res.data) {
             updateWalletTable(res.data);
         }
         refreshRemaining = refreshIntervalSec;
@@ -436,6 +469,7 @@ function safeParseFloat(val) {
 }
 
 function numberWithCommas(x) {
+    if (typeof x === "undefined" || x === null) return "0";
     x = x.toString();
     var parts = x.split(".");
     parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -443,6 +477,7 @@ function numberWithCommas(x) {
 }
 
 function numberNoneCommas(x) {
+    if (!x) return "0";
     return x.toString().replace(/[\D\s\._\-]+/g, "");
 }
 
@@ -465,20 +500,22 @@ function calcvalue() {
         let dval = safeParseFloat($Darr[i].innerText);
         if (cval === 0) cval = 1;
         if (dval === 0) dval = 1;
+
         let nprice = Math.round((aval + bval) * cval);
         let estpr = Math.round((aval + bval) * dval);
-        let estrate = nprice === 0 ? 0 : ((estpr / nprice) * 100);
-        estrate = estrate.toFixed(2);
+        let estrate = nprice === 0 ? "0.00" : ((estpr / nprice) * 100).toFixed(2);
+        let baldiff = estpr - nprice;
+
         wonsum += nprice;
         estsum += estpr;
-        let baldiff = estpr - nprice;
 
         $Aarr[i].innerText = numberWithCommas(aval);
         $Barr[i].innerText = numberWithCommas(bval);$Carr[i].innerText = numberWithCommas(cval);
         $Darr[i].innerText = numberWithCommas(dval);$Earr[i].innerText = numberWithCommas(nprice);
         $Farr[i].innerText = numberWithCommas(estpr);$Garr[i].innerText = estrate;
         $Harr[i].innerText = numberWithCommas(baldiff);
-        if (estrate < 100) {
+
+        if (parseFloat(estrate) < 100) {
             $Garr[i].style.color = "red";
             $Harr[i].style.color = "red";
         } else {
@@ -486,12 +523,13 @@ function calcvalue() {
             $Harr[i].style.color = "green";
         }
     }
-    let sumdiff = wonsum === 0 ? 0 : ((estsum / wonsum) * 100).toFixed(2);
+    let sumdiff = wonsum === 0 ? "0.00" : ((estsum / wonsum) * 100).toFixed(2);
     $("#wonsum").html(numberWithCommas(wonsum));
     $("#estsum").html(numberWithCommas(estsum));
     $("#sumdiff").html(sumdiff);
 }
 
+// 웹소켓 연결
 const coins = [];
 {% for coin in mycoins %}
     {% if coin["currency"] != "KRW" %}
@@ -499,40 +537,42 @@ const coins = [];
     {% endif %}
 {% endfor %}
 
-const protocol = location.protocol === "https:" ? "wss" : "ws";
-const ws = new WebSocket(`${protocol}://${location.host}/ws/coinprice?coins=${coins.join(",")}`);
+if (coins.length > 0) {
+    const protocol = location.protocol === "https:" ? "wss" : "ws";
+    const ws = new WebSocket(`${protocol}://${location.host}/ws/coinprice?coins=${coins.join(",")}`);
 
-let updateTimer = null;
-ws.onmessage = function(event) {
-    const data = JSON.parse(event.data);
-    const market = data.market.split('-')[1];
-    const activeprice = data.current_price;
-    const change = data.change;
+    ws.onmessage = function(event) {
+        try {
+            const data = JSON.parse(event.data);
+            const market = data.market.split('-')[1];
+            const activeprice = data.current_price;
+            const change = data.change;
 
-    $("tr").each(function() {
-        if ($(this).find(".coins a").text().trim() === market) {
-            $(this).find(".cprice").text(numberWithCommas(activeprice));
-            let $changeTd =$(this).find(".change");
-            if (change === "RISE") {
-                $changeTd.html('<span class="change-up">&#9650;</span>');
-            } else if (change === "FALL") {
-                $changeTd.html('<span class="change-down">&#9660;</span>');
-            } else {
-                $changeTd.html('<span class="change-even">-</span>');
+            $("tr").each(function() {
+                if ($(this).find(".coins a").text().trim() === market) {
+                    $(this).find(".cprice").text(numberWithCommas(activeprice));
+                    let $changeTd =$(this).find(".change");
+                    if (change === "RISE") {
+                        $changeTd.html('<span class="change-up">&#9650;</span>');
+                    } else if (change === "FALL") {
+                        $changeTd.html('<span class="change-down">&#9660;</span>');
+                    } else {
+                        $changeTd.html('<span class="change-even">-</span>');
+                    }
+                }
+            });
+
+            if (!updateTimer) {
+                updateTimer = setTimeout(() => {
+                    calcvalue();
+                    updateTimer = null;
+                }, 1000);
             }
+        } catch (err) {
+            console.error("웹소켓 메시지 처리 중 오류:", err);
         }
-    });
-
-    if (!updateTimer) {
-        updateTimer = setTimeout(() => {
-            calcvalue();
-            updateTimer = null;
-        }, 1000);
-    }
-};
-
-let userNo = {{ user_No }};
-let setKey = "{{ setkey }}";
+    };
+}
 
 function sellcoin(uno, skey, coinn, volum) {
     if (confirm("본 코인을 시장가로 매도하시겠습니까?")) {
@@ -571,5 +611,3 @@ function buycoin(uno, skey, coinn) {
     }
 }
 </script>
-</body>
-</html>
