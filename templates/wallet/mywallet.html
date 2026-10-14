@@ -26,6 +26,20 @@
     display: inline-block;
   }
 
+  /* 체결 활동도 뱃지 스타일 */
+  .act-badge {
+    font-size: 0.68em;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 4px;
+    vertical-align: middle;
+    display: inline-block;
+  }
+  .act-hot { background-color: rgba(34, 197, 94, 0.2); color: #22c55e; border: 1px solid #22c55e; }
+  .act-normal { background-color: rgba(234, 179, 8, 0.2); color: #eab308; border: 1px solid #eab308; }
+  .act-cold { background-color: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid #f87171; }
+
   /* 1. 반응형 테이블의 가로 스크롤 정상 복원 */
   .table-responsive {
     overflow-x: auto !important;
@@ -38,12 +52,12 @@
     cursor: pointer;
   }
 
-  /* 테이블 스크롤에 잘리지 않도록 화면 기준 fixed 팝업으로 변경 */
+  /* 테이블 스크롤에 잘리지 않도록 화면 기준 fixed 팝업 */
   .coin-tooltip-wrap .bb-tooltip-content {
     display: none;
     position: fixed;
     z-index: 99999;
-    width: 310px;
+    width: 320px;
     background-color: #0f172a;
     color: #f8fafc;
     text-align: left;
@@ -52,7 +66,7 @@
     box-shadow: 0 12px 28px rgba(0, 0, 0, 0.7), 0 4px 10px rgba(0, 0, 0, 0.5);
     border: 1px solid #334155;
     font-size: 11.5px;
-    pointer-events: none; /* 터치나 클릭 스크롤 방해 차단 */
+    pointer-events: none;
     white-space: normal;
   }
 
@@ -63,6 +77,18 @@
     padding-bottom: 6px;
     margin-bottom: 6px;
     font-weight: 700;
+  }
+
+  /* 툴팁 내 체결 활동도 영역 */
+  .bb-tt-activity {
+    display: flex;
+    justify-content: space-between;
+    background: #1e293b;
+    padding: 5px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    margin-bottom: 6px;
+    color: #cbd5e1;
   }
 
   .bb-tt-grid {
@@ -124,6 +150,19 @@
 
                                             {% if coin["currency"] != "KRW" and bb_patterns.get(coin["currency"]) %}
                                                 {% set bb = bb_patterns.get(coin["currency"]) %}
+                                                {% set act = bb.get('trade_activity') %}
+
+                                                {# 체결 상태 뱃지 #}
+                                                {% if act %}
+                                                    {% if act.activity_level == 'hot' %}
+                                                        <span class="act-badge act-hot" title="10분 체결 활발">활발</span>
+                                                    {% elif act.activity_level == 'normal' %}
+                                                        <span class="act-badge act-normal" title="10분 체결 보통">보통</span>
+                                                    {% else %}
+                                                        <span class="act-badge act-cold" title="체결 정체/주의">정체</span>
+                                                    {% endif %}
+                                                {% endif %}
+
                                                 <div class="bb-tooltip-content">
                                                     <div class="bb-tt-header">
                                                         <span>{{ coin["currency"] }} 추세 진단</span>
@@ -131,6 +170,24 @@
                                                             종합: {{ "%+d" % bb.overall_score }}점
                                                         </span>
                                                     </div>
+
+                                                    {# 툴팁 내 체결 활동도 요약 #}
+                                                    {% if act %}
+                                                    <div class="bb-tt-activity">
+                                                        <span>10분: <strong style="color:#f8fafc;">{{ act.trade_count_10m }}건</strong></span>
+                                                        <span>1시간: <strong style="color:#f8fafc;">{{ act.trade_count_1h }}건</strong></span>
+                                                        <span>
+                                                            {% if act.last_trade_sec < 60 %}
+                                                                {{ act.last_trade_sec }}초 전
+                                                            {% elif act.last_trade_sec < 3600 %}
+                                                                {{ (act.last_trade_sec // 60) }}분 전
+                                                            {% else %}
+                                                                1시간+ 정체
+                                                            {% endif %}
+                                                        </span>
+                                                    </div>
+                                                    {% endif %}
+
                                                     <div class="bb-tt-grid bb-tt-grid-head">
                                                         <span>주기</span><span>패턴</span><span>%B</span><span>변동폭</span>
                                                     </div>
@@ -238,13 +295,11 @@
 {% include '/comm/adscript.html' %}
 
 <script>
-// 1. Jinja2 변수 안전 파싱 (문법 에러 방지)
 let userNo = parseInt("{{ user_No | default(0) }}", 10);
 let setKey = "{{ setkey | default('') }}";
 
 let bbPatternsCache = {};
 try {
-    // tojson 필터를 안전한 JSON 문자열로 처리
     let rawPatterns = {{ (bb_patterns | default({})) | tojson | safe }};
     if (rawPatterns) bbPatternsCache = rawPatterns;
 } catch (e) {
@@ -280,8 +335,8 @@ function bindTooltipEvents() {
         let top = rect.bottom + 6;
         let left = rect.left;
 
-        if (left + 320 > window.innerWidth) {
-            left = window.innerWidth - 330;
+        if (left + 330 > window.innerWidth) {
+            left = window.innerWidth - 340;
         }
         if (left < 10) left = 10;
 
@@ -351,9 +406,12 @@ function updateRefreshDisplay() {
     $("#refresh-remaining").text(text);
 }
 
+// 툴팁 및 활동도 HTML 동적 생성
 function generateTooltipHtml(currency) {
     if (currency === "KRW" || !bbPatternsCache[currency]) return "";
     let bb = bbPatternsCache[currency];
+    let act = bb.trade_activity;
+
     let tfList = [
         ['10m', '10분'], ['30m', '30분'], ['1h', '1시간'], ['4h', '4시간'], ['1d', '일봉']
     ];
@@ -373,12 +431,26 @@ function generateTooltipHtml(currency) {
     });
 
     let scoreColor = bb.overall_score >= 3 ? "#f87171" : (bb.overall_score <= -2 ? "#60a5fa" : "#fbbf24");
+
+    // 체결 활동도 텍스트 구성
+    let actHtml = "";
+    if (act) {
+        let agoText = act.last_trade_sec < 60 ? `${act.last_trade_sec}초 전` : (act.last_trade_sec < 3600 ? `${Math.floor(act.last_trade_sec/60)}분 전` : '1시간+ 정체');
+        actHtml = `
+        <div class="bb-tt-activity">
+            <span>10분: <strong style="color:#f8fafc;">${act.trade_count_10m}건</strong></span>
+            <span>1시간: <strong style="color:#f8fafc;">${act.trade_count_1h}건</strong></span>
+            <span>${agoText}</span>
+        </div>`;
+    }
+
     return `
     <div class="bb-tooltip-content">
         <div class="bb-tt-header">
             <span>${currency} 추세 진단</span>
             <span style="color: ${scoreColor};">종합: ${bb.overall_score > 0 ? '+' : ''}${bb.overall_score}점</span>
         </div>
+        ${actHtml}
         <div class="bb-tt-grid bb-tt-grid-head">
             <span>주기</span><span>패턴</span><span style="text-align:right;">%B</span><span style="text-align:right;">변동폭</span>
         </div>
@@ -394,11 +466,25 @@ function updateWalletTable(mycoins) {
         let isKRW = coin.currency === "KRW";
         let tooltipHtml = generateTooltipHtml(coin.currency);
 
+        // 체결 활동도 뱃지 동적 생성
+        let badgeHtml = "";
+        if (!isKRW && bbPatternsCache[coin.currency] && bbPatternsCache[coin.currency].trade_activity) {
+            let act = bbPatternsCache[coin.currency].trade_activity;
+            if (act.activity_level === 'hot') {
+                badgeHtml = '<span class="act-badge act-hot">활발</span>';
+            } else if (act.activity_level === 'normal') {
+                badgeHtml = '<span class="act-badge act-normal">보통</span>';
+            } else {
+                badgeHtml = '<span class="act-badge act-cold">정체</span>';
+            }
+        }
+
         let row = `
         <tr>
             <td class="coins" style="text-align: center">
                 <div class="coin-tooltip-wrap">
                     <a href="https://upbit.com/exchange?code=CRIX.UPBIT.KRW-${coin.currency}" target="_blank">${coin.currency}</a>
+                    ${badgeHtml}
                     ${tooltipHtml}
                 </div>
             </td>
@@ -611,3 +697,5 @@ function buycoin(uno, skey, coinn) {
     }
 }
 </script>
+</body>
+</html>

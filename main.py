@@ -1444,7 +1444,6 @@ async def toggle_active_simple(userno: int, active: str, db: AsyncSession = Depe
     active_norm = active.strip().upper()
     if active_norm not in ("Y", "N"):
         raise HTTPException(status_code=400, detail="active 값은 Y 또는 N 이어야 합니다.")
-
     # setonoff 함수 내부에서 sync_mtsetup_to_redis 호출됨
     await setonoff(userno, active_norm, db)
     return {"userNo": userno, "activeYN": active_norm, "updated": True}
