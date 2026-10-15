@@ -87,7 +87,6 @@
     // 서버에서 전달받은 원본 데이터
     var dataArr1 = {{ tval | safe }};
     var dataArr2 = {{ ival | safe }};
-    // 템플릿의 items 리스트를 JSON 형태로 변환
     var rawItems = {{ items | tojson | safe }};
 
     $(document).ready(function () {
@@ -100,7 +99,6 @@
         return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     }
 
-    // 날짜 포맷팅 유틸 (YYYY-MM-DD 반환)
     function getDateString(d) {
         var year = d.getFullYear();
         var month = ('0' + (d.getMonth() + 1)).slice(-2);
@@ -111,40 +109,36 @@
     function buildTable() {
         if (!rawItems || rawItems.length === 0) return;
 
-        // 1. 기준 일자 계산 (오늘, 어제, 30일 전 제한일자)
         var today = new Date();
         var yesterday = new Date();
         yesterday.setDate(today.getDate() - 1);
 
         var limitDate = new Date();
-        limitDate.setDate(today.getDate() - 30); // 최근 30일 제한
+        limitDate.setDate(today.getDate() - 30);
 
         var todayStr = getDateString(today);
         var yestStr = getDateString(yesterday);
         var limitDateStr = getDateString(limitDate);
 
         var processedList = [];
-        var pastDailyMap = {}; // 30일 이내 과거 일자별 데이터 저장용
+        var pastDailyMap = {};
 
         rawItems.forEach(function (item) {
             var timeStr = item[1].toString();
-            var datePart = timeStr.substring(0, 10); // "YYYY-MM-DD"
+            var datePart = timeStr.substring(0, 10);
             var balance = parseInt(item[2]) || 0;
 
-            // ★ 30일 이전의 오래된 데이터는 제외
             if (datePart < limitDateStr) {
                 return;
             }
 
             if (datePart === todayStr || datePart === yestStr) {
-                // 오늘과 어제: 상세 내역(시간대별) 그대로 유지
                 processedList.push({
                     displayTime: timeStr,
                     balance: balance,
                     isDailySummary: false
                 });
             } else {
-                // 오늘/어제 제외 최근 30일 이내: 일자별 마감 잔고 1건으로 축약
                 pastDailyMap[datePart] = {
                     displayTime: datePart,
                     balance: balance,
@@ -153,18 +147,16 @@
             }
         });
 
-        // 과거 일자별 요약 데이터를 리스트에 합치기
         var pastDays = Object.keys(pastDailyMap).sort();
         pastDays.forEach(function (d) {
             processedList.push(pastDailyMap[d]);
         });
 
-        // 일시 기준 정렬
+        // 테이블은 시간순(과거 -> 최신) 정렬
         processedList.sort(function(a, b) {
             return a.displayTime.localeCompare(b.displayTime);
         });
 
-        // 2. 테이블 렌더링 및 30일 구간 내 차액 계산
         var tbodyHtml = "";
         var suminc = 0;
 
@@ -195,13 +187,24 @@
     }
 
     function renderChart() {
+        if (!dataArr1 || dataArr1.length === 0) return;
+
+        var chartLabels = dataArr1.slice();
+        var chartData = dataArr2.slice();
+
+        // 첫 번째 데이터가 마지막 데이터보다 미래(최신)인 경우, 최신이 오른쪽으로 가도록 역순 뒤집기
+        if (chartLabels.length >= 2 && chartLabels[0] > chartLabels[chartLabels.length - 1]) {
+            chartLabels.reverse();
+            chartData.reverse();
+        }
+
         new Chart(document.getElementById("myChart1"), {
             type: 'line',
             data: {
-                labels: dataArr1,
+                labels: chartLabels,
                 datasets: [{
                     label: '총 자산 잔고 (KRW)',
-                    data: dataArr2,
+                    data: chartData,
                     borderColor: "rgb(247,85,16)",
                     backgroundColor: "rgba(247,85,16,0.05)",
                     fill: true,
@@ -211,7 +214,7 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                title: { display: true, text: "자산 변동 추이" },
+                title: { display: true, text: "자산 변동 추이 (과거 → 최신)" },
                 tooltips: {
                     mode: 'index',
                     intersect: false,
@@ -222,7 +225,13 @@
                     }
                 },
                 scales: {
-                    xAxes: [{ display: true }],
+                    xAxes: [{
+                        display: true,
+                        ticks: {
+                            autoSkip: true,
+                            maxTicksLimit: 8
+                        }
+                    }],
                     yAxes: [{
                         display: true,
                         ticks: {
