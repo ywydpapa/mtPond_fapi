@@ -1546,7 +1546,7 @@ async def balance_graph(
                FROM walletBalance
                WHERE userNo = :userno AND attrib NOT LIKE :xattr
                ORDER BY timeStamp ASC
-                   LIMIT 120
+                   LIMIT 240
                """)
     result = await db.execute(sql, {"userno": uno, "xattr": "%XXX%"})
     rows = result.fetchall()
