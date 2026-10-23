@@ -1487,7 +1487,7 @@ async def register_losscut_log(
         await db.rollback()
         raise
 
-    return {"success": True, "logNo": result.lastrowid}
+    return {"success": True, "logNo": getattr(result, "lastrowid", None)}
 
 
 @app.get("/phapp/mlogin/{userid}/{passwd}")
