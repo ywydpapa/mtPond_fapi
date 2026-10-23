@@ -9,3 +9,15 @@ GET http://127.0.0.1:8000/hello/User
 Accept: application/json
 
 ###
+
+POST http://127.0.0.1:8000/api/regLC
+Content-Type: application/json
+
+{
+  "userNo": 1,
+  "coinCode": "KRW-BTC",
+  "losscutQty": 0.001,
+  "loscutPrice": 95000000,
+  "lossRate": -5.5,
+  "losscutReason": "손절 조건 도달"
+}

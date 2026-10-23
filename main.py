@@ -22,6 +22,7 @@ import dotenv
 import httpx
 import jinja2
 from pandas import DataFrame
+from pydantic import BaseModel, Field
 import pyupbit
 import redis.asyncio as aioredis  # Redis 비동기 모듈
 import requests
@@ -226,6 +227,15 @@ def format_currency(value):
 
 
 templates.env.filters['currency'] = format_currency
+
+
+class LossCutLogRequest(BaseModel):
+    userNo: int = Field(gt=0)
+    coinCode: Optional[str] = Field(default=None, max_length=20)
+    losscutQty: Optional[float] = Field(default=None, allow_inf_nan=False)
+    loscutPrice: Optional[float] = Field(default=None, allow_inf_nan=False)
+    lossRate: Optional[float] = Field(default=None, allow_inf_nan=False)
+    losscutReason: Optional[str] = Field(default=None, max_length=100)
 
 
 # ==========================================
@@ -1457,6 +1467,27 @@ async def myorders(userno: int, setkey: str, db: AsyncSession = Depends(get_db))
         return JSONResponse({"success": True, "data": myorders, "cprices": cprices})
     except Exception as e:
         return JSONResponse({"success": False, "data": [], "cprices": []})
+
+
+@app.post("/api/regLC", status_code=status.HTTP_201_CREATED)
+async def register_losscut_log(
+        data: LossCutLogRequest,
+        db: AsyncSession = Depends(get_db)
+):
+    sql = text("""
+        INSERT INTO losscutLog
+            (userNo, coinCode, losscutQty, loscutPrice, lossRate, losscutReason)
+        VALUES
+            (:userNo, :coinCode, :losscutQty, :loscutPrice, :lossRate, :losscutReason)
+    """)
+    try:
+        result = await db.execute(sql, data.model_dump())
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise
+
+    return {"success": True, "logNo": result.lastrowid}
 
 
 @app.get("/phapp/mlogin/{userid}/{passwd}")
