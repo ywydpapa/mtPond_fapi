@@ -162,7 +162,8 @@ async def sync_excoins_to_redis(user_no: int, db: AsyncSession):
         sql = text("SELECT DISTINCT market FROM exCoinlist WHERE userNo IN (0, :userno) AND attrib NOT LIKE :attrib")
         result = await db.execute(sql, {"userno": user_no, "attrib": "%XXX%"})
         rows = result.fetchall()
-        ex_markets = [r[0] for r in rows if r and r[0]]
+        ex_markets = {r[0] for r in rows if r and r[0]}
+        ex_markets.update(await get_upbit_warning_markets())
 
         redis_key = f"mtpond:excoins:{user_no}"
         # 기존 Set 삭제 후 재등록
@@ -177,6 +178,66 @@ async def sync_excoins_to_redis(user_no: int, db: AsyncSession):
         print(f"[REDIS] exCoins 동기화 완료: {ex_markets} (userNo: {user_no})")
     except Exception as e:
         print(f"[REDIS][WARN] exCoins 동기화 실패 (userNo: {user_no}): {e}")
+
+
+UPBIT_WARNING_MARKETS_CACHE_KEY = "mtpond:upbit:warning_markets"
+UPBIT_WARNING_MARKETS_CACHE_TTL = 60 * 60 * 48
+
+
+async def fetch_upbit_warning_markets() -> List[str]:
+    url = "https://api.upbit.com/v1/market/all"
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        response = await client.get(url, params={"isDetails": "true"})
+        response.raise_for_status()
+        markets = response.json()
+
+    if not isinstance(markets, list):
+        raise ValueError("업비트 마켓 목록 응답 형식이 올바르지 않습니다.")
+
+    return sorted({
+        market["market"]
+        for market in markets
+        if isinstance(market, dict)
+        and isinstance(market.get("market"), str)
+        and market["market"].startswith("KRW-")
+        and market.get("market_warning") == "CAUTION"
+    })
+
+
+async def get_upbit_warning_markets() -> List[str]:
+    cached_markets = await redis_client.get(UPBIT_WARNING_MARKETS_CACHE_KEY)
+    if cached_markets is not None:
+        markets = json.loads(cached_markets)
+        if not isinstance(markets, list) or not all(isinstance(market, str) for market in markets):
+            raise ValueError("업비트 거래유의 종목 Redis 캐시 형식이 올바르지 않습니다.")
+        return markets
+
+    markets = await fetch_upbit_warning_markets()
+    await redis_client.set(
+        UPBIT_WARNING_MARKETS_CACHE_KEY,
+        json.dumps(markets),
+        ex=UPBIT_WARNING_MARKETS_CACHE_TTL,
+    )
+    return markets
+
+
+async def job_refresh_upbit_warning_markets():
+    lock_key = "lock:job_refresh_upbit_warning_markets"
+    is_locked = await redis_client.set(lock_key, "locked", nx=True, ex=60)
+    if not is_locked:
+        print("[Scheduler] 업비트 거래유의 종목 갱신이 다른 프로세스에서 진행 중입니다.")
+        return
+
+    try:
+        markets = await fetch_upbit_warning_markets()
+        await redis_client.set(
+            UPBIT_WARNING_MARKETS_CACHE_KEY,
+            json.dumps(markets),
+            ex=UPBIT_WARNING_MARKETS_CACHE_TTL,
+        )
+        print(f"[Scheduler] 업비트 거래유의 종목 갱신 완료: {markets}")
+    except Exception as e:
+        print(f"[Scheduler][WARN] 업비트 거래유의 종목 갱신 실패: {e}")
 
 
 # ==========================================
@@ -194,11 +255,19 @@ async def lifespan(app: FastAPI):
         name="3시간마다 지갑 잔고 기록 (하루 8회)",
         replace_existing=True,
     )
+    scheduler.add_job(
+        job_refresh_upbit_warning_markets,
+        trigger=CronTrigger(hour=0, minute=5),
+        id="upbit_warning_markets_refresh",
+        name="업비트 거래유의 종목 하루 1회 갱신",
+        replace_existing=True,
+    )
     scheduler.start()
-    print("스케줄러 시작됨 (0시 기준 3시간 주기 실행)")
+    print("스케줄러 시작됨 (잔고 수집 및 업비트 거래유의 종목 일일 갱신)")
 
     # 서버 시작 직후 1회 실행 (분산 락 덕분에 4개 워커 중 1개만 실행됨)
     asyncio.create_task(job_collect_wallet_balances())
+    asyncio.create_task(job_refresh_upbit_warning_markets())
     yield
     scheduler.shutdown()
     await redis_client.aclose()
@@ -1585,6 +1654,14 @@ async def excoin(request: Request, userNo: int, setkey: str, db: AsyncSession = 
     except Exception as e:
         print("excoinlist error:", e)
         excoinlist = []
+    try:
+        excoinlist = sorted(set(excoinlist) | set(await get_upbit_warning_markets()))
+    except Exception as e:
+        print(f"업비트 거래유의 종목 조회 오류: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail="업비트 거래유의 종목을 불러오는데 실패했습니다.",
+        ) from e
     return templates.TemplateResponse('/trade/excoin.html', {
         "request": request, "user_No": userNo, "setkey": setkey,
         "coinlist": coinlist, "excoinlist": excoinlist
