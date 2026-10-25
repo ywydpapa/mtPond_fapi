@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    {% include '/comm/adheader.html' %}
+</head>
+<body id="page-top">
+<div id="wrapper">
+    {% include '/comm/sidebar.html' %}
+    <div id="content-wrapper" class="d-flex flex-column">
+        <div id="content">
+            {% include '/comm/adtopbar.html' %}
+            <div class="container-fluid">
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">일자별 손절 내역</h6>
+                    </div>
+                    <div class="card-body">
+                        <form id="losscut-search" class="form-inline mb-3">
+                            <label for="log-date" class="mr-2">조회 일자</label>
+                            <input class="form-control mr-2" type="date" id="log-date" value="{{ today }}" required>
+                            <button class="btn btn-primary" type="submit">조회</button>
+                        </form>
+                        <div id="losscut-status" class="mb-2" role="status" aria-live="polite"></div>
+                        <div class="table-responsive">
+                            <table class="table table-bordered" id="losscut-table" width="100%" cellspacing="0">
+                                <thead>
+                                <tr class="text-center">
+                                    <th>손절 시각</th>
+                                    <th>코인</th>
+                                    <th>손절 수량</th>
+                                    <th>손절 가격</th>
+                                    <th>손절 당시 현재가</th>
+                                    <th>손절률</th>
+                                    <th>손절 사유</th>
+                                </tr>
+                                </thead>
+                                <tbody id="losscut-rows"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <footer class="sticky-footer bg-white">
+            <div class="container my-auto">
+                <div class="copyright text-center my-auto">
+                    <span>Copyright &copy; Coredjk 2025</span>
+                </div>
+            </div>
+        </footer>
+    </div>
+</div>
+<a class="scroll-to-top rounded" href="#page-top">
+    <i class="fas fa-angle-up"></i>
+</a>
+{% include '/comm/adscript.html' %}
+<script>
+    const searchForm = document.getElementById("losscut-search");
+    const dateInput = document.getElementById("log-date");
+    const statusMessage = document.getElementById("losscut-status");
+    const rowsContainer = document.getElementById("losscut-rows");
+    const userNo = {{ user_No }};
+
+    function formatNumber(value) {
+        if (value === null || value === undefined || value === "") return "-";
+        const number = Number(value);
+        return Number.isFinite(number)
+            ? number.toLocaleString("ko-KR", { maximumFractionDigits: 8 })
+            : "-";
+    }
+
+    function addCell(row, value, className) {
+        const cell = document.createElement("td");
+        cell.textContent = value;
+        if (className) cell.className = className;
+        row.appendChild(cell);
+    }
+
+    async function loadLosscutLogs() {
+        const selectedDate = dateInput.value;
+        if (!selectedDate) {
+            statusMessage.textContent = "조회 일자를 선택해 주세요.";
+            rowsContainer.replaceChildren();
+            return;
+        }
+
+        statusMessage.textContent = "손절 내역을 불러오는 중입니다.";
+        rowsContainer.replaceChildren();
+
+        try {
+            const response = await fetch(
+                `/api/losscutlogs/${userNo}?log_date=${encodeURIComponent(selectedDate)}`
+            );
+            if (!response.ok) {
+                throw new Error(`손절 내역 조회에 실패했습니다. (${response.status})`);
+            }
+
+            const result = await response.json();
+            if (!result.success || !Array.isArray(result.items)) {
+                throw new Error("손절 내역 응답 형식이 올바르지 않습니다.");
+            }
+
+            for (const item of result.items) {
+                const row = document.createElement("tr");
+                addCell(row, item.regDate ? item.regDate.replace("T", " ") : "-", "text-center");
+                addCell(row, item.coinCode || "-", "text-center");
+                addCell(row, formatNumber(item.losscutQty), "text-right");
+                addCell(row, formatNumber(item.loscutPrice), "text-right");
+                addCell(row, formatNumber(item.currentPrice), "text-right");
+                addCell(row, formatNumber(item.lossRate), "text-right");
+                addCell(row, item.losscutReason || "-", "");
+                rowsContainer.appendChild(row);
+            }
+
+            statusMessage.textContent = result.items.length
+                ? `${result.date} 손절 내역 ${result.items.length}건`
+                : `${result.date} 손절 내역이 없습니다.`;
+        } catch (error) {
+            statusMessage.textContent = error.message || "손절 내역을 불러오지 못했습니다.";
+        }
+    }
+
+    searchForm.addEventListener("submit", function (event) {
+        event.preventDefault();
+        loadLosscutLogs();
+    });
+
+    loadLosscutLogs();
+</script>
+</body>
+</html>

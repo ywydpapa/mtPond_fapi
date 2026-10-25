@@ -3,7 +3,7 @@
 # ==========================================
 import asyncio
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import date, datetime, timedelta
 import json
 import math
 import os
@@ -234,6 +234,7 @@ class LossCutLogRequest(BaseModel):
     coinCode: Optional[str] = Field(default=None, max_length=20)
     losscutQty: Optional[float] = Field(default=None, allow_inf_nan=False)
     loscutPrice: Optional[float] = Field(default=None, allow_inf_nan=False)
+    currentPrice: float = Field(gt=0, allow_inf_nan=False)
     lossRate: Optional[float] = Field(default=None, allow_inf_nan=False)
     losscutReason: Optional[str] = Field(default=None, max_length=100)
 
@@ -1055,6 +1056,28 @@ async def my_balance(request: Request, uno: int, user_session: int = Depends(req
     )
 
 
+@app.get("/losscutlog/{userno}")
+async def losscut_log_page(
+        request: Request,
+        userno: int,
+        user_session: int = Depends(require_login)
+):
+    if userno != user_session:
+        return RedirectResponse(url="/", status_code=303)
+
+    return templates.TemplateResponse(
+        "/trade/losscutlog.html",
+        {
+            "request": request,
+            "user_No": userno,
+            "user_Name": request.session.get("user_Name"),
+            "user_Role": request.session.get("user_Role"),
+            "setkey": request.session.get("setKey"),
+            "today": date.today().isoformat(),
+        }
+    )
+
+
 @app.post("/tradebuymarket/{uno}/{setkey}/{coinn}/{costk}")
 async def tradebuymarket(request: Request, uno: int, setkey: str, coinn: str, costk: float,
                          user_session: int = Depends(require_login), db: AsyncSession = Depends(get_db)):
@@ -1476,9 +1499,9 @@ async def register_losscut_log(
 ):
     sql = text("""
         INSERT INTO losscutLog
-            (userNo, coinCode, losscutQty, loscutPrice, lossRate, losscutReason)
+            (userNo, coinCode, losscutQty, loscutPrice, currentPrice, lossRate, losscutReason)
         VALUES
-            (:userNo, :coinCode, :losscutQty, :loscutPrice, :lossRate, :losscutReason)
+            (:userNo, :coinCode, :losscutQty, :loscutPrice, :currentPrice, :lossRate, :losscutReason)
     """)
     try:
         result = await db.execute(sql, data.model_dump())
@@ -1488,6 +1511,41 @@ async def register_losscut_log(
         raise
 
     return {"success": True, "logNo": getattr(result, "lastrowid", None)}
+
+
+@app.get("/api/losscutlogs/{userno}")
+async def get_losscut_logs(
+        userno: int,
+        log_date: date = Query(default_factory=date.today),
+        user_session: int = Depends(require_login),
+        db: AsyncSession = Depends(get_db)
+):
+    if userno != user_session:
+        raise HTTPException(status_code=403, detail="조회 권한이 없습니다.")
+
+    start_at = datetime.combine(log_date, datetime.min.time())
+    end_at = start_at + timedelta(days=1)
+    result = await db.execute(
+        text("""
+            SELECT logNo, userNo, coinCode, losscutQty, loscutPrice, currentPrice,
+                   lossRate, losscutReason, regDate
+            FROM losscutLog
+            WHERE userNo = :userno
+              AND regDate >= :start_at
+              AND regDate < :end_at
+            ORDER BY regDate DESC, logNo DESC
+        """),
+        {
+            "userno": userno,
+            "start_at": start_at,
+            "end_at": end_at,
+        }
+    )
+    return {
+        "success": True,
+        "date": log_date.isoformat(),
+        "items": [dict(row._mapping) for row in result.fetchall()],
+    }
 
 
 @app.get("/phapp/mlogin/{userid}/{passwd}")
