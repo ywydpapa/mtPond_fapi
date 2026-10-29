@@ -135,7 +135,8 @@ async def sync_mtsetup_to_redis(user_no: int, db: AsyncSession):
                           maxCoincnt,
                           martinYN,
                           stopYN,
-                          stopAutoYN
+                          stopAutoYN,
+                          activeVer
                    FROM mtSetup
                    WHERE userNo = :userno
                      AND attrib NOT LIKE :attrib LIMIT 1
