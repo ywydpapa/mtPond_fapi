@@ -249,6 +249,14 @@
                                         </tr>
                                         <tr>
                                             <td style="text-align: center">
+                                                <h6 class="m-0 font-weight-bold text-primary mb-0">실행버전</h6>
+                                            </td>
+                                            <td style="text-align: right">
+                                                {% if active_version is not none %}{{ active_version }}버전{% else %}미설정{% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align: center">
                                                 <h6 class="m-0 font-weight-bold text-primary mb-0">거래시작 금액</h6>
                                             </td>
                                             <td style = "text-align: right">

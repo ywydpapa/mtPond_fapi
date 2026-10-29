@@ -804,16 +804,16 @@ async def setupbid(uno, setkey, initbid, bidstep, bidrate, askrate, coinn, svrno
     return False
 
 
-async def setupmymtpondset(uno, setkey, initbid, addbid, limitbid, minmargin, cutrate, db: AsyncSession):
+async def setupmymtpondset(uno, setkey, initbid, addbid, limitbid, minmargin, cutrate, activever, db: AsyncSession):
     if await check_setkey(uno, setkey, db):
         try:
             sql = text("""
-                       insert into mtSetup (userNo, initAmt, addAmt, limitAmt, minMargin, lcRate)
-                       VALUES (:userNo, :iniBid, :addBid, :limitBid, :minMargin, :losscut)
+                       insert into mtSetup (userNo, initAmt, addAmt, limitAmt, minMargin, lcRate, activeVer)
+                       VALUES (:userNo, :iniBid, :addBid, :limitBid, :minMargin, :losscut, :activeVer)
                        """)
             await db.execute(sql, {
                 "userNo": uno, "iniBid": initbid, "addBid": addbid, "limitBid": limitbid, "minMargin": minmargin,
-                "losscut": cutrate
+                "losscut": cutrate, "activeVer": activever
             })
             await db.commit()
             # ★ DB 저장 성공 시 Redis 동기화 및 봇 알림
@@ -1284,13 +1284,15 @@ async def mymtpondstat(request: Request, userno: int, setkey: str, user_session:
     userLicense = request.session.get("License")
     onoffstat = await get_onoff(userno, db)
     mysettings = await get_mtsetups(userno, db)
+    active_version = mysettings[0]._mapping.get("activeVer") if mysettings else None
     mycoins = await checkwallet(userno, setkey, db)
     myorders = await get_mtorderlist(userno, setkey, db)
     return templates.TemplateResponse('/trade/mypondmain.html', {
         "request": request, "user_No": userno, "user_Name": userName,
         "user_Role": userRole, "setkey": setkey, "license": userLicense,
         "onoffstat": onoffstat[0] if onoffstat else 'N',
-        "mysettings": mysettings, "myorders": myorders, "mycoins": mycoins
+        "mysettings": mysettings, "myorders": myorders, "mycoins": mycoins,
+        "active_version": active_version
     })
 
 
@@ -1391,6 +1393,7 @@ async def setupmtponds(
         limitamt: str = Form(...),
         minmargin: str = Form(...),
         lcrate: Optional[str] = Form(None),
+        activeVer: int = Form(..., ge=1, le=6),
         setkey: str = Form(...),
         db: AsyncSession = Depends(get_db),
 ):
@@ -1403,7 +1406,7 @@ async def setupmtponds(
 
     await erasemtpondsetup(uno, setkey, db)
     # setupmymtpondset 내부에서 DB 저장 후 Redis 동기화가 호출됩니다.
-    await setupmymtpondset(uno, setkey, initp, addp, limitp, minm, lcr, db)
+    await setupmymtpondset(uno, setkey, initp, addp, limitp, minm, lcr, activeVer, db)
     return RedirectResponse(url=f"/mymtpondstat/{uno}/{setkey}", status_code=303)
 
 
@@ -1526,7 +1529,7 @@ async def mtpondsetup_all(userno: int, db: AsyncSession = Depends(get_db)):
 
     # 캐시 미스 시 DB 조회
     sql = text(
-        "SELECT activeYN,initAmt,addAmt,limitAmt,minMargin,maxMargin,tickRate,tickYN,lcRate,lcGap,maxCoincnt, martinYN, stopYN, stopAutoYN FROM mtSetup WHERE userNo = :userno AND attrib NOT LIKE :attrib")
+        "SELECT activeYN,initAmt,addAmt,limitAmt,minMargin,maxMargin,tickRate,tickYN,lcRate,lcGap,maxCoincnt, martinYN, stopYN, stopAutoYN, activeVer FROM mtSetup WHERE userNo = :userno AND attrib NOT LIKE :attrib")
     result = await db.execute(sql, {"userno": userno, "attrib": "%XXX%"})
     rows = result.fetchall()
     data = [dict(r._mapping) for r in rows]
