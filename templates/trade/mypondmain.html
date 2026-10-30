@@ -26,7 +26,8 @@
     transition: background .25s;
     margin: 0;
 }
- td:has(#chk1) { display: flex; justify-content: center; /* 가로 중앙 / align-items: center; / 세로 중앙 / } / 간격 조정 */ td:has(#chk1) .trade-toggle { gap: 8px; }
+.td-center-toggle { display: flex; justify-content: center; }
+.trade-toggle { gap: 8px; }
 
 .toggle-label .toggle-handle {
     position: absolute;
@@ -260,7 +261,7 @@
                                                 <h6 class="m-0 font-weight-bold text-primary mb-0">거래시작 금액</h6>
                                             </td>
                                             <td style = "text-align: right">
-                                                {{ mysettings[0][4] | currency }}
+                                                {{ mysettings[0]['initAmt'] | currency }}
                                             </td>
                                         </tr>
                                         <tr>
@@ -268,7 +269,7 @@
                                                 <h6 class="m-0 font-weight-bold text-primary mb-0">추가매수 금액</h6>
                                             </td>
                                             <td style = "text-align: right">
-                                                {{ mysettings[0][5]|currency }}
+                                                {{ mysettings[0]['addAmt']|currency }}
                                             </td>
                                         </tr>
                                         <tr>
@@ -276,39 +277,66 @@
                                                 <h6 class="m-0 font-weight-bold text-primary mb-0">매수한계 금액</h6>
                                             </td>
                                             <td style = "text-align: right">
-                                                {{ mysettings[0][6]|currency }}
+                                                {{ mysettings[0]['limitAmt']|currency }}
                                             </td>
                                         </tr>
                                         <tr>
                                             <td style="text-align: center">
                                                 <h6 class="m-0 font-weight-bold text-primary mb-0">손절 설정치</h6>
                                             </td>
-                                            <td style = "text-align: right">
-                                                {{ mysettings[0][11]}}
+                                            <td class="text-right">
+                                                <div class="d-flex align-items-center justify-content-end">
+                                                    <input type="number" id="loss-cut-rate" class="form-control"
+                                                           min="-10" max="-1" step="0.1" required
+                                                           value="{{ mysettings[0]['lcRate'] }}"
+                                                           aria-label="손절 설정치"
+                                                           style="width: 120px;"
+                                                           {% if onoffstat == 'Y' %}disabled{% endif %}>
+                                                    <span class="ml-2">%</span>
+                                                </div>
                                             </td>
                                         </tr>
                                         <tr>
                                             <td style="text-align: center">
                                                 <h6 class="m-0 font-weight-bold text-primary mb-0">최대 구매 코인 수</h6>
                                             </td>
-                                            <td style = "text-align: right">
-                                                {{ mysettings[0][13]}}
+                                            <td class="text-right">
+                                                <select id="max-coin-count" class="form-control" aria-label="최대 구매 코인 수"
+                                                        style="width: 120px; margin-left: auto;"
+                                                        {% if onoffstat == 'Y' %}disabled{% endif %}>
+                                                    <option value="5" {% if mysettings[0]['maxCoincnt']|string == '5' %}selected{% endif %}>5</option>
+                                                    <option value="10" {% if mysettings[0]['maxCoincnt']|string == '10' %}selected{% endif %}>10</option>
+                                                    <option value="15" {% if mysettings[0]['maxCoincnt']|string == '15' %}selected{% endif %}>15</option>
+                                                    <option value="20" {% if mysettings[0]['maxCoincnt']|string == '20' %}selected{% endif %}>20</option>
+                                                </select>
                                             </td>
                                         </tr>
                                         <tr>
                                             <td style="text-align: center">
                                                 <h6 class="m-0 font-weight-bold text-primary mb-0">마틴시스템 적용</h6>
                                             </td>
-                                            <td style = "text-align: right">
-                                                {{ mysettings[0][14]}}
+                                            <td class="td-center-toggle">
+                                                <div class="trade-toggle d-flex align-items-center">
+                                                    <input type="checkbox" id="martin1" class="toggle-input" {% if martin_enabled %}checked{% endif %}/>
+                                                    <label for="martin1" class="toggle-label" aria-label="마틴 시스템 적용 토글">
+                                                        <span class="toggle-handle"></span>
+                                                    </label>
+                                                    <span id="martin1-state" class="toggle-state-text mb-0">OFF</span>
+                                                </div>
                                             </td>
                                         </tr>
                                         <tr>
                                             <td style="text-align: center">
                                                 <h6 class="m-0 font-weight-bold text-primary mb-0">손절 적용</h6>
                                             </td>
-                                            <td style = "text-align: right">
-                                                {{ mysettings[0][15]}}
+                                            <td class="td-center-toggle">
+                                                <div class="trade-toggle d-flex align-items-center">
+                                                    <input type="checkbox" id="lc1" class="toggle-input" {% if losscut_enabled %}checked{% endif %}/>
+                                                    <label for="lc1" class="toggle-label" aria-label="손절 적용 토글">
+                                                        <span class="toggle-handle"></span>
+                                                    </label>
+                                                    <span id="lc1-state" class="toggle-state-text mb-0">OFF</span>
+                                                </div>
                                             </td>
                                         </tr>
                                     </table>
@@ -614,6 +642,16 @@ document.addEventListener('DOMContentLoaded', function() {
     if (chk && state) {
         state.textContent = chk.checked ? 'ON' : 'OFF';
     }
+    const losscutToggle = document.getElementById('lc1');
+    const losscutState = document.getElementById('lc1-state');
+    if (losscutToggle && losscutState) {
+        losscutState.textContent = losscutToggle.checked ? 'ON' : 'OFF';
+    }
+    const martinToggle = document.getElementById('martin1');
+    const martinState = document.getElementById('martin1-state');
+    if (martinToggle && martinState) {
+        martinState.textContent = martinToggle.checked ? 'ON' : 'OFF';
+    }
 
     fetch('http://becog.iptime.org:8088/api/top30coins')
         .then(response => response.json())
@@ -653,17 +691,169 @@ $('#chk1').on('change', function() {
         url: `/api/mtpondsetonoff/${userno}/${active}`,
         method: 'POST',
         success: function(res){
-            // 성공 시 별도 처리 불필요(이미 반영됨)
+            $('#max-coin-count').prop('disabled', isChecked);
+            $('#loss-cut-rate').prop('disabled', isChecked);
         },
-        error: function(){
+        error: function(xhr){
+            if (xhr.status === 503) {
+                alert(xhr.responseJSON && xhr.responseJSON.detail
+                    ? xhr.responseJSON.detail
+                    : 'Redis 설정 동기화에 실패했습니다.');
+                location.reload();
+                return;
+            }
             alert('업데이트 실패');
             // 3) 상태 원복
             const reverted = !isChecked;
             $toggle.prop('checked', reverted);
             $state.text(reverted ? 'ON' : 'OFF');
+            $('#max-coin-count').prop('disabled', reverted);
+            $('#loss-cut-rate').prop('disabled', reverted);
         },
         complete: function(){
             $toggle.prop('disabled', false);
+        }
+    });
+});
+
+$('#lc1').on('change', function() {
+    const userno = {{ user_No }};
+    const isChecked = this.checked;
+    const active = isChecked ? 'Y' : 'N';
+    const $toggle = $(this);
+    const $state = $('#lc1-state');
+    $state.text(isChecked ? 'ON' : 'OFF');
+    $toggle.prop('disabled', true);
+    $.ajax({
+        url: `/api/mtpondsetlosscut/${userno}/${active}`,
+        method: 'POST',
+        success: function() {},
+        error: function(xhr) {
+            if (xhr.status === 503) {
+                alert(xhr.responseJSON && xhr.responseJSON.detail
+                    ? xhr.responseJSON.detail
+                    : 'Redis 설정 동기화에 실패했습니다.');
+                location.reload();
+                return;
+            }
+            alert('손절 적용 설정 업데이트 실패');
+            const reverted = !isChecked;
+            $toggle.prop('checked', reverted);
+            $state.text(reverted ? 'ON' : 'OFF');
+        },
+        complete: function() {
+            $toggle.prop('disabled', false);
+        }
+    });
+});
+
+$('#martin1').on('change', function() {
+    const userno = {{ user_No }};
+    const isChecked = this.checked;
+    const active = isChecked ? 'Y' : 'N';
+    const $toggle = $(this);
+    const $state = $('#martin1-state');
+    $state.text(isChecked ? 'ON' : 'OFF');
+    $toggle.prop('disabled', true);
+    $.ajax({
+        url: `/api/mtpondsetmartin/${userno}/${active}`,
+        method: 'POST',
+        error: function(xhr) {
+            if (xhr.status === 503) {
+                alert(xhr.responseJSON && xhr.responseJSON.detail
+                    ? xhr.responseJSON.detail
+                    : 'Redis 설정 동기화에 실패했습니다.');
+                location.reload();
+                return;
+            }
+            alert('마틴 시스템 설정 업데이트 실패');
+            const reverted = !isChecked;
+            $toggle.prop('checked', reverted);
+            $state.text(reverted ? 'ON' : 'OFF');
+        },
+        complete: function() {
+            $toggle.prop('disabled', false);
+        }
+    });
+});
+
+$('#max-coin-count').on('change', function() {
+    const userno = {{ user_No }};
+    const $select = $(this);
+    const selectedCount = $select.val();
+    const previousCount = $select.data('saved-count');
+    $select.prop('disabled', true);
+    $.ajax({
+        url: `/api/mtpondsetmaxcoincnt/${userno}/${selectedCount}`,
+        method: 'POST',
+        success: function() {
+            $select.data('saved-count', selectedCount);
+        },
+        error: function(xhr) {
+            if (xhr.status === 503) {
+                alert(xhr.responseJSON && xhr.responseJSON.detail
+                    ? xhr.responseJSON.detail
+                    : 'Redis 설정 동기화에 실패했습니다.');
+                location.reload();
+                return;
+            }
+            if (xhr.status === 409) {
+                alert(xhr.responseJSON && xhr.responseJSON.detail
+                    ? xhr.responseJSON.detail
+                    : '거래 중에는 최대 구매 코인 수를 변경할 수 없습니다.');
+                location.reload();
+                return;
+            }
+            alert('최대 구매 코인 수 업데이트 실패');
+            $select.val(previousCount);
+        },
+        complete: function() {
+            $select.prop('disabled', false);
+        }
+    });
+});
+
+$('#max-coin-count').data('saved-count', $('#max-coin-count').val());
+
+$('#loss-cut-rate').data('saved-rate', $('#loss-cut-rate').val());
+$('#loss-cut-rate').on('change', function() {
+    const userno = {{ user_No }};
+    const $input = $(this);
+    const selectedRate = $input.val();
+    const previousRate = $input.data('saved-rate');
+    if (!$input[0].checkValidity()) {
+        alert('손절 설정치는 -10%부터 -1%까지 0.1% 단위로 입력해 주세요.');
+        $input.val(previousRate);
+        return;
+    }
+
+    $input.prop('disabled', true);
+    $.ajax({
+        url: `/api/mtpondsetlcrate/${userno}/${encodeURIComponent(selectedRate)}`,
+        method: 'POST',
+        success: function() {
+            $input.data('saved-rate', selectedRate);
+        },
+        error: function(xhr) {
+            if (xhr.status === 503) {
+                alert(xhr.responseJSON && xhr.responseJSON.detail
+                    ? xhr.responseJSON.detail
+                    : 'Redis 설정 동기화에 실패했습니다.');
+                location.reload();
+                return;
+            }
+            if (xhr.status === 409) {
+                alert(xhr.responseJSON && xhr.responseJSON.detail
+                    ? xhr.responseJSON.detail
+                    : '거래 중에는 손절 설정치를 변경할 수 없습니다.');
+                location.reload();
+                return;
+            }
+            alert('손절 설정치 업데이트 실패');
+            $input.val(previousRate);
+        },
+        complete: function() {
+            $input.prop('disabled', $('#chk1').prop('checked'));
         }
     });
 });

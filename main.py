@@ -118,7 +118,7 @@ else:
 # ==========================================
 # 4b. Redis 동기화 헬퍼 함수
 # ==========================================
-async def sync_mtsetup_to_redis(user_no: int, db: AsyncSession):
+async def sync_mtsetup_to_redis(user_no: int, db: AsyncSession) -> bool:
     """DB에서 최신 mtSetup을 읽어와 Redis 캐시를 갱신하고 Pub/Sub 채널로 알림 전송"""
     try:
         sql = text("""
@@ -143,18 +143,22 @@ async def sync_mtsetup_to_redis(user_no: int, db: AsyncSession):
                    """)
         result = await db.execute(sql, {"userno": user_no, "attrib": "%XXX%"})
         row = result.fetchone()
-        if row:
-            setup_dict = dict(row._mapping)
-            redis_key = f"mtpond:setup:{user_no}"
-            channel_name = f"mtpond:config_channel:{user_no}"
+        if not row:
+            print(f"[REDIS][WARN] mtSetup 동기화 대상 없음 (userNo: {user_no})")
+            return False
 
-            # 1. Redis 캐시 갱신 (TTL: 1시간)
-            await redis_client.set(redis_key, json.dumps(setup_dict), ex=3600)
-            # 2. 봇 클라이언트들에게 실시간 이벤트 브로드캐스트
-            await redis_client.publish(channel_name, "reload")
-            print(f"[REDIS] mtSetup 동기화 완료 (userNo: {user_no})")
+        setup_dict = dict(row._mapping)
+        redis_key = f"mtpond:setup:{user_no}"
+        channel_name = f"mtpond:config_channel:{user_no}"
+
+        # 캐시 갱신 후 봇 클라이언트들에게 변경을 알립니다.
+        await redis_client.set(redis_key, json.dumps(setup_dict), ex=3600)
+        await redis_client.publish(channel_name, "reload")
+        print(f"[REDIS] mtSetup 동기화 완료 (userNo: {user_no})")
+        return True
     except Exception as e:
         print(f"[REDIS][WARN] mtSetup 동기화 실패 (userNo: {user_no}): {e}")
+        return False
 
 
 async def sync_excoins_to_redis(user_no: int, db: AsyncSession):
@@ -676,7 +680,7 @@ async def get_mtsetups(uno: int, db: AsyncSession):
     try:
         sql = text("select * from mtSetup where userNo=:userno and attrib not like :xatts")
         rows = await db.execute(sql, {"userno": uno, "xatts": '%XXXUP%'})
-        return list(rows.fetchall())
+        return [dict(row._mapping) for row in rows.fetchall()]
     except Exception as e:
         print('설정 불러오기 오류:', e)
         return []
@@ -691,15 +695,18 @@ async def setonoffs(setno: int, yesno: str, db: AsyncSession):
         print('거래 ON/OFF 오류:', e)
 
 
-async def setonoff(uno: int, yesno: str, db: AsyncSession):
-    try:
-        sql = text("UPDATE mtSetup SET activeYN = :yesno where userNo=:userno AND attrib not like :xattr")
-        await db.execute(sql, {"userno": uno, "yesno": yesno, "xattr": '%XXXUP%'})
-        await db.commit()
-        # ★ DB 갱신 후 Redis 캐시 동기화 및 PubSub 알림
-        await sync_mtsetup_to_redis(uno, db)
-    except Exception as e:
-        print('거래 ON/OFF 오류:', e)
+async def setonoff(uno: int, yesno: str, db: AsyncSession) -> Optional[bool]:
+    sql = text("UPDATE mtSetup SET activeYN = :yesno where userNo=:userno AND attrib not like :xattr")
+    result = await db.execute(sql, {"userno": uno, "yesno": yesno, "xattr": '%XXXUP%'})
+    if result.rowcount == 0:
+        existing_setup = await db.execute(
+            text("SELECT 1 FROM mtSetup WHERE userNo = :userno AND attrib NOT LIKE :xattr LIMIT 1"),
+            {"userno": uno, "xattr": "%XXXUP%"}
+        )
+        if existing_setup.fetchone() is None:
+            return None
+    await db.commit()
+    return await sync_mtsetup_to_redis(uno, db)
 
 
 async def get_trsetups(uno: int, db: AsyncSession):
@@ -817,9 +824,7 @@ async def setupmymtpondset(uno, setkey, initbid, addbid, limitbid, minmargin, cu
                 "losscut": cutrate, "activeVer": activever
             })
             await db.commit()
-            # ★ DB 저장 성공 시 Redis 동기화 및 봇 알림
-            await sync_mtsetup_to_redis(uno, db)
-            return True
+            return await sync_mtsetup_to_redis(uno, db)
         except Exception as e:
             print('mtPond 트레이딩 설정 저장 오류:', e)
     return False
@@ -1285,7 +1290,9 @@ async def mymtpondstat(request: Request, userno: int, setkey: str, user_session:
     userLicense = request.session.get("License")
     onoffstat = await get_onoff(userno, db)
     mysettings = await get_mtsetups(userno, db)
-    active_version = mysettings[0]._mapping.get("activeVer") if mysettings else None
+    active_version = mysettings[0].get("activeVer") if mysettings else None
+    losscut_enabled = mysettings[0].get("stopYN") == "Y" if mysettings else False
+    martin_enabled = mysettings[0].get("martinYN") == "Y" if mysettings else False
     mycoins = await checkwallet(userno, setkey, db)
     myorders = await get_mtorderlist(userno, setkey, db)
     return templates.TemplateResponse('/trade/mypondmain.html', {
@@ -1293,7 +1300,8 @@ async def mymtpondstat(request: Request, userno: int, setkey: str, user_session:
         "user_Role": userRole, "setkey": setkey, "license": userLicense,
         "onoffstat": onoffstat[0] if onoffstat else 'N',
         "mysettings": mysettings, "myorders": myorders, "mycoins": mycoins,
-        "active_version": active_version
+        "active_version": active_version, "losscut_enabled": losscut_enabled,
+        "martin_enabled": martin_enabled
     })
 
 
@@ -1406,8 +1414,11 @@ async def setupmtponds(
     minm = minmargin.replace(',', '') if minmargin else '0'
 
     await erasemtpondsetup(uno, setkey, db)
-    # setupmymtpondset 내부에서 DB 저장 후 Redis 동기화가 호출됩니다.
-    await setupmymtpondset(uno, setkey, initp, addp, limitp, minm, lcr, activeVer, db)
+    if not await setupmymtpondset(uno, setkey, initp, addp, limitp, minm, lcr, activeVer, db):
+        raise HTTPException(
+            status_code=503,
+            detail="mtPond 설정 저장 또는 Redis 설정 동기화에 실패했습니다."
+        )
     return RedirectResponse(url=f"/mymtpondstat/{uno}/{setkey}", status_code=303)
 
 
@@ -1550,9 +1561,159 @@ async def toggle_active_simple(userno: int, active: str, db: AsyncSession = Depe
     active_norm = active.strip().upper()
     if active_norm not in ("Y", "N"):
         raise HTTPException(status_code=400, detail="active 값은 Y 또는 N 이어야 합니다.")
-    # setonoff 함수 내부에서 sync_mtsetup_to_redis 호출됨
-    await setonoff(userno, active_norm, db)
+    synced = await setonoff(userno, active_norm, db)
+    if synced is None:
+        raise HTTPException(status_code=404, detail="거래 설정을 찾을 수 없습니다.")
+    if not synced:
+        raise HTTPException(
+            status_code=503,
+            detail="거래 시작 설정은 저장됐지만 Redis 설정 동기화에 실패했습니다."
+        )
     return {"userNo": userno, "activeYN": active_norm, "updated": True}
+
+
+@app.post("/api/mtpondsetlosscut/{userno}/{active}")
+async def toggle_losscut(
+        userno: int,
+        active: str,
+        user_session: int = Depends(require_login),
+        db: AsyncSession = Depends(get_db)
+):
+    if userno != user_session:
+        raise HTTPException(status_code=403, detail="권한이 없습니다.")
+
+    active_norm = active.strip().upper()
+    if active_norm not in ("Y", "N"):
+        raise HTTPException(status_code=400, detail="active 값은 Y 또는 N 이어야 합니다.")
+
+    result = await db.execute(
+        text("UPDATE mtSetup SET stopYN = :active WHERE userNo = :userno AND attrib NOT LIKE :attrib"),
+        {"active": active_norm, "userno": userno, "attrib": "%XXX%"}
+    )
+    if result.rowcount == 0:
+        raise HTTPException(status_code=404, detail="거래 설정을 찾을 수 없습니다.")
+    await db.commit()
+    if not await sync_mtsetup_to_redis(userno, db):
+        raise HTTPException(
+            status_code=503,
+            detail="손절 적용은 저장됐지만 Redis 설정 동기화에 실패했습니다."
+        )
+    return {"userNo": userno, "stopYN": active_norm, "updated": True}
+
+
+@app.post("/api/mtpondsetmartin/{userno}/{active}")
+async def toggle_martin(
+        userno: int,
+        active: str,
+        user_session: int = Depends(require_login),
+        db: AsyncSession = Depends(get_db)
+):
+    if userno != user_session:
+        raise HTTPException(status_code=403, detail="권한이 없습니다.")
+
+    active_norm = active.strip().upper()
+    if active_norm not in ("Y", "N"):
+        raise HTTPException(status_code=400, detail="active 값은 Y 또는 N 이어야 합니다.")
+
+    result = await db.execute(
+        text("UPDATE mtSetup SET martinYN = :active WHERE userNo = :userno AND attrib NOT LIKE :attrib"),
+        {"active": active_norm, "userno": userno, "attrib": "%XXX%"}
+    )
+    if result.rowcount == 0:
+        raise HTTPException(status_code=404, detail="거래 설정을 찾을 수 없습니다.")
+    await db.commit()
+    if not await sync_mtsetup_to_redis(userno, db):
+        raise HTTPException(
+            status_code=503,
+            detail="마틴 시스템 설정은 저장됐지만 Redis 설정 동기화에 실패했습니다."
+        )
+    return {"userNo": userno, "martinYN": active_norm, "updated": True}
+
+
+@app.post("/api/mtpondsetmaxcoincnt/{userno}/{max_coin_count}")
+async def update_max_coin_count(
+        userno: int,
+        max_coin_count: int,
+        user_session: int = Depends(require_login),
+        db: AsyncSession = Depends(get_db)
+):
+    if userno != user_session:
+        raise HTTPException(status_code=403, detail="권한이 없습니다.")
+    if max_coin_count not in (5, 10, 15, 20):
+        raise HTTPException(status_code=400, detail="최대 구매 코인 수는 5, 10, 15, 20 중 하나여야 합니다.")
+
+    result = await db.execute(
+        text("""
+             UPDATE mtSetup
+             SET maxCoincnt = :max_coin_count
+             WHERE userNo = :userno
+               AND attrib NOT LIKE :attrib
+               AND activeYN = 'N'
+             """),
+        {"max_coin_count": max_coin_count, "userno": userno, "attrib": "%XXX%"}
+    )
+    if result.rowcount == 0:
+        active_result = await db.execute(
+            text("SELECT activeYN FROM mtSetup WHERE userNo = :userno AND attrib NOT LIKE :attrib LIMIT 1"),
+            {"userno": userno, "attrib": "%XXX%"}
+        )
+        current_setup = active_result.fetchone()
+        if current_setup is None:
+            raise HTTPException(status_code=404, detail="거래 설정을 찾을 수 없습니다.")
+        if current_setup[0] == "Y":
+            raise HTTPException(status_code=409, detail="거래 중에는 최대 구매 코인 수를 변경할 수 없습니다.")
+    await db.commit()
+    if not await sync_mtsetup_to_redis(userno, db):
+        raise HTTPException(
+            status_code=503,
+            detail="최대 구매 코인 수는 저장됐지만 Redis 설정 동기화에 실패했습니다."
+        )
+    return {"userNo": userno, "maxCoincnt": max_coin_count, "updated": True}
+
+
+@app.post("/api/mtpondsetlcrate/{userno}/{lc_rate}")
+async def update_losscut_rate(
+        userno: int,
+        lc_rate: float,
+        user_session: int = Depends(require_login),
+        db: AsyncSession = Depends(get_db)
+):
+    if userno != user_session:
+        raise HTTPException(status_code=403, detail="권한이 없습니다.")
+    if (
+        not math.isfinite(lc_rate)
+        or not -10 <= lc_rate <= -1
+        or not math.isclose(lc_rate * 10, round(lc_rate * 10), rel_tol=0, abs_tol=1e-8)
+    ):
+        raise HTTPException(status_code=400, detail="손절 설정치는 -10%부터 -1%까지 0.1% 단위여야 합니다.")
+
+    result = await db.execute(
+        text("""
+             UPDATE mtSetup
+             SET lcRate = :lc_rate
+             WHERE userNo = :userno
+               AND attrib NOT LIKE :attrib
+               AND activeYN = 'N'
+             """),
+        {"lc_rate": lc_rate, "userno": userno, "attrib": "%XXX%"}
+    )
+    if result.rowcount == 0:
+        active_result = await db.execute(
+            text("SELECT activeYN FROM mtSetup WHERE userNo = :userno AND attrib NOT LIKE :attrib LIMIT 1"),
+            {"userno": userno, "attrib": "%XXX%"}
+        )
+        current_setup = active_result.fetchone()
+        if current_setup is None:
+            raise HTTPException(status_code=404, detail="거래 설정을 찾을 수 없습니다.")
+        if current_setup[0] == "Y":
+            raise HTTPException(status_code=409, detail="거래 중에는 손절 설정치를 변경할 수 없습니다.")
+    await db.commit()
+    if not await sync_mtsetup_to_redis(userno, db):
+        raise HTTPException(
+            status_code=503,
+            detail="손절 설정치는 저장됐지만 Redis 설정 동기화에 실패했습니다."
+        )
+    return {"userNo": userno, "lcRate": lc_rate, "updated": True}
 
 
 @app.post('/api/myorders/{userno}/{setkey}')
