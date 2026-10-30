@@ -1053,7 +1053,7 @@ async def login(
     request.session["user_Role"] = user_row[3]
     request.session["License"] = user_row[4]
     request.session["setKey"] = setkey
-    return RedirectResponse(url=f"/upbittop30/{user_row[0]}/{setkey}", status_code=303)
+    return RedirectResponse(url=f"/mymtpondstat/{user_row[0]}/{setkey}", status_code=303)
 
 
 @app.get("/logout")
