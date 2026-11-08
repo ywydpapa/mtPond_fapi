@@ -1,7 +1,33 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
     {% include '/comm/adheader.html' %}
+    <style>
+        .version-card {
+            border: 2px solid #e3e6f0;
+            border-radius: 0.5rem;
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+            background-color: #fff;
+        }
+        .version-card:hover {
+            border-color: #4e73df;
+            transform: translateY(-2px);
+            box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.08);
+        }
+        .version-card.active {
+            border-color: #4e73df !important;
+            background-color: #f8f9fc !important;
+            box-shadow: 0 0.35rem 1rem rgba(78, 115, 223, 0.2) !important;
+        }
+        .feature-box {
+            border-radius: 0.4rem;
+            border: 1px solid #e3e6f0;
+            background-color: #f8f9fc;
+            padding: 0.75rem;
+            height: 100%;
+        }
+    </style>
 </head>
 <body id="page-top">
 <!-- Page Wrapper -->
@@ -14,83 +40,212 @@
             {% include '/comm/adtopbar.html' %}
             <!-- Begin Page Content -->
             <div class="container-fluid">
-                <!-- Page Heading -->
-                <!-- Page Heading -->
-                <!-- DataTales Example -->
+                <!-- Trading Setup Card -->
                 <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h5 class="m-0 font-weight-bold text-primary">mt.Pond 트레이딩 설정</h5><h6 style="display: none"></h6>
+                    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                        <h5 class="m-0 font-weight-bold text-primary"><i class="fas fa-sliders-h mr-2"></i>mt.Pond 트레이딩 전략 및 환경 설정</h5>
+                        <span class="badge badge-info p-2"><i class="fas fa-info-circle mr-1"></i>버전별 특성을 확인하고 최적의 전략을 선택하세요</span>
                     </div>
                     <div class="card-body">
-                        <div class="table-responsive">
-                            <form action="/setupmtponds" method="post"
-                                  onsubmit="return confirm('설정내용을 저장하시겠습니까?');">
-                                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
-                                    <colgroup>
-                                        <col width="20%"/>
-                                        <col width="30%"/>
-                                        <col width="30%"/>
-                                        <col width="20%"/>
-                                    </colgroup>
-                                    <tr>
-                                        <td style="text-align: center"><h5>실행버전</h5></td>
-                                        <td colspan="2">
-                                            <select id="activeVer" name="activeVer" class="form-control">
-                                                <option value="1" selected>1버전</option>
-                                                <option value="2">2버전</option>
-                                                <option value="3">3버전</option>
-                                                <option value="4">4버전</option>
-                                                <option value="5">5버전</option>
-                                                <option value="6">6버전</option>
-                                            </select>
-                                        </td>
-                                        <td></td>
-                                    </tr>
-                                    <tr>
-                                        <td style="text-align: center"><h5>시작 매수 금액 </h5></td>
-                                        <td colspan="2">
-                                            <input id="initprice" name="initprice" class="form-control" type="text"
-                                                   value="200000" max="1000000" placeholder="200,000"
-                                                   style="text-align: right"
-                                                   oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');"/>
-                                        </td>
-                                        <td style="text-align: center"><input type="hidden" name="setkey" value="{{ setkey }}">
-                                            <input type="hidden" name="userno" value="{{ user_No }}">
-                                            <input type="hidden" name="svrno" value="{{ server_No }}">
-                                            <button type="submit" class="form-control btn-primary" value="submit" id="savebtn">설정저장</button>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td style="text-align: center"><h5>추가 매수 금액 </h5></td>
-                                        <td colspan="2">
-                                            <input id="addprice" name="addprice" class="form-control" type="text"
-                                                   value="40000" max="100000" placeholder="40,000"
-                                                   style="text-align: right"
-                                                   oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');"/>
-                                        </td>
-                                        <td style="text-align: center">
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td style="text-align: center"><h5>투자 한계 금액(각 코인별)</h5></td>
-                                        <td colspan="2">
-                                            <input id="limitamt" name="limitamt" class="form-control" min="10000" max="1000000" value="400000" step="100000" style="text-align: right">
-                                        </td>
-                                        <td style="text-align: center"></td>
-                                    </tr>
-                                    <tr>
-                                        <td style="text-align: center"><h5>최소이윤</h5></td>
-                                        <td colspan="2"><input type="number" id="minmargin" name="minmargin" min="0.15" max="100" value="0.5" step="0.01" style="text-align: right; width: 60px;"><span>%</span></td>
-                                        <td></td>
-                                    </tr>
-                                    <tr>
-                                        <td style="text-align: center"><h5>손절시작</h5></td>
-                                        <td colspan="2"><input type="number" id="lcrate" name="lcrate" min="-10.0" max="0" value="-3.0" step="0.01" style="text-align: right; width: 60px;"><span>%</span></td>
-                                        <td></td>
-                                    </tr>
-                                </table>
-                            </form>
-                        </div>
+                        <form action="/setupmtponds" method="post" onsubmit="return confirm('설정내용을 저장하시겠습니까?');">
+                            <input type="hidden" name="setkey" value="{{ setkey }}">
+                            <input type="hidden" name="userno" value="{{ user_No }}">
+                            <input type="hidden" name="svrno" value="{{ server_No }}">
+
+                            <!-- 1. 전략 버전 선택 영역 -->
+                            <div class="card mb-4 border-left-primary shadow-sm">
+                                <div class="card-header bg-white py-3">
+                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-robot mr-2"></i>1. 트레이딩 엔진 버전 선택 (mtpond1.py ~ mtpond6.py)</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-group mb-3">
+                                        <label for="activeVer" class="font-weight-bold text-dark">실행 버전 선택 (드롭다운 또는 아래 카드 클릭):</label>
+                                        <select id="activeVer" name="activeVer" class="form-control form-control-lg font-weight-bold" onchange="selectVersion(this.value);">
+                                            <option value="1">1버전 (mtpond1.py) : 정통 추세 스캘핑 & 마틴 2회 물타기 + 사다리 익절</option>
+                                            <option value="2">2버전 (mtpond2.py) : 급등 모멘텀 스캘핑 & 2회 물타기 + 긴급 구출</option>
+                                            <option value="3">3버전 (mtpond3.py) : 레인지 박스권 분할매집 & 2회 물타기 + 합산 분할익절</option>
+                                            <option value="4">4버전 (mtpond4.py) : 방어형 틱 사다리 스캘핑 (비상탈출 + 구출 특화)</option>
+                                            <option value="5">5버전 (mtpond5.py) : 50/20/30 자산배분 하이브리드 (추세 50% + 그리드 20% + 현금 30%)</option>
+                                            <option value="6">6버전 (mtpond6.py) : 4-Bucket 정밀 자산배분 (초기 20% / 물타기 40% / 돌파 10% / 예비금 30%)</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- 6개 빠른 선택 카드 -->
+                                    <div class="row no-gutters mb-3">
+                                        <div class="col-6 col-md-4 col-lg-2 p-1">
+                                            <div class="card version-card text-center p-2 h-100" data-ver="1" onclick="selectVersion('1')">
+                                                <div class="font-weight-bold text-primary"><i class="fas fa-chart-line"></i> 1버전</div>
+                                                <small class="text-muted d-block mt-1">정통 추세 스캘핑</small>
+                                                <span class="badge badge-primary mt-1">안정 추세추종</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-4 col-lg-2 p-1">
+                                            <div class="card version-card text-center p-2 h-100" data-ver="2" onclick="selectVersion('2')">
+                                                <div class="font-weight-bold text-danger"><i class="fas fa-bolt"></i> 2버전</div>
+                                                <small class="text-muted d-block mt-1">급등 모멘텀</small>
+                                                <span class="badge badge-danger mt-1">고유동성 공격형</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-4 col-lg-2 p-1">
+                                            <div class="card version-card text-center p-2 h-100" data-ver="3" onclick="selectVersion('3')">
+                                                <div class="font-weight-bold text-info"><i class="fas fa-layer-group"></i> 3버전</div>
+                                                <small class="text-muted d-block mt-1">박스권 분할매집</small>
+                                                <span class="badge badge-info mt-1">횡보장 방어형</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-4 col-lg-2 p-1">
+                                            <div class="card version-card text-center p-2 h-100" data-ver="4" onclick="selectVersion('4')">
+                                                <div class="font-weight-bold text-secondary"><i class="fas fa-shield-alt"></i> 4버전</div>
+                                                <small class="text-muted d-block mt-1">방어 틱 사다리</small>
+                                                <span class="badge badge-secondary mt-1">원금보존 수비형</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-4 col-lg-2 p-1">
+                                            <div class="card version-card text-center p-2 h-100" data-ver="5" onclick="selectVersion('5')">
+                                                <div class="font-weight-bold text-success"><i class="fas fa-balance-scale"></i> 5버전</div>
+                                                <small class="text-muted d-block mt-1">50/20/30 배분</small>
+                                                <span class="badge badge-success mt-1">올라운드 하이브리드</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-4 col-lg-2 p-1">
+                                            <div class="card version-card text-center p-2 h-100" data-ver="6" onclick="selectVersion('6')">
+                                                <div class="font-weight-bold text-warning"><i class="fas fa-cubes"></i> 6버전</div>
+                                                <small class="text-muted d-block mt-1">4-Bucket 배분</small>
+                                                <span class="badge badge-warning text-dark mt-1">피라미딩 불타기</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- 선택된 버전의 상세 특징 안내 카드 -->
+                                    <div id="versionDetailBox" class="card border-0 bg-light p-3">
+                                        <div class="d-flex align-items-center justify-content-between border-bottom pb-2 mb-3">
+                                            <div>
+                                                <h5 id="vDetailTitle" class="m-0 font-weight-bold text-primary"></h5>
+                                                <span id="vDetailBadge" class="badge mt-1 font-weight-normal px-2 py-1"></span>
+                                            </div>
+                                            <div>
+                                                <span class="badge badge-dark p-2"><i class="fas fa-file-code mr-1"></i>엔진: <span id="vDetailEngine" class="font-weight-bold"></span></span>
+                                            </div>
+                                        </div>
+                                        <p id="vDetailSummary" class="text-dark mb-3" style="font-size: 0.95rem; line-height: 1.6;"></p>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-2">
+                                                <div class="feature-box">
+                                                    <strong class="text-primary"><i class="fas fa-sign-in-alt mr-1"></i> 진입 알고리즘:</strong>
+                                                    <div id="vDetailEntry" class="small text-dark mt-1"></div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6 mb-2">
+                                                <div class="feature-box">
+                                                    <strong class="text-success"><i class="fas fa-trophy mr-1"></i> 익절(TP) 방식:</strong>
+                                                    <div id="vDetailTP" class="small text-dark mt-1"></div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6 mb-2">
+                                                <div class="feature-box">
+                                                    <strong class="text-info"><i class="fas fa-tint mr-1"></i> 물타기 / 불타기 / 구출:</strong>
+                                                    <div id="vDetailWater" class="small text-dark mt-1"></div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6 mb-2">
+                                                <div class="feature-box">
+                                                    <strong class="text-danger"><i class="fas fa-shield-virus mr-1"></i> 손절 및 리스크 방어:</strong>
+                                                    <div id="vDetailStop" class="small text-dark mt-1"></div>
+                                                </div>
+                                            </div>
+                                            <div class="col-12 mt-1">
+                                                <div class="feature-box border-warning bg-white">
+                                                    <strong class="text-warning text-dark"><i class="fas fa-bullseye mr-1"></i> 적합 장세 & 투자 성향:</strong>
+                                                    <div id="vDetailBest" class="small text-dark mt-1 font-weight-bold"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 2. 매매 세부 파라미터 입력 테이블 -->
+                            <div class="card mb-4 border-left-success shadow-sm">
+                                <div class="card-header bg-white py-3">
+                                    <h6 class="m-0 font-weight-bold text-success"><i class="fas fa-coins mr-2"></i>2. 매매 자금 및 목표치 설정</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered mb-0" id="dataTable" width="100%" cellspacing="0">
+                                            <colgroup>
+                                                <col width="25%"/>
+                                                <col width="45%"/>
+                                                <col width="30%"/>
+                                            </colgroup>
+                                            <tr>
+                                                <td class="align-middle bg-light"><h6 class="font-weight-bold mb-0 text-dark">시작 매수 금액</h6></td>
+                                                <td>
+                                                    <div class="input-group">
+                                                        <input id="initprice" name="initprice" class="form-control" type="text"
+                                                               value="{{ (current_setup.initAmt if current_setup else None) or '200000' }}" max="1000000" placeholder="200,000"
+                                                               style="text-align: right"
+                                                               oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');"/>
+                                                        <div class="input-group-append"><span class="input-group-text">원</span></div>
+                                                    </div>
+                                                    <small class="text-muted">종목당 1차 진입 주문 금액입니다. (최소 10,000원 ~ 최대 1,000,000원)</small>
+                                                </td>
+                                                <td class="align-middle text-center" rowspan="2">
+                                                    <button type="submit" class="btn btn-primary btn-lg font-weight-bold shadow px-4 py-3" id="savebtn">
+                                                        <i class="fas fa-save mr-2"></i>설정 저장 및 적용
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="align-middle bg-light"><h6 class="font-weight-bold mb-0 text-dark">추가 매수 금액 (물타기/구출)</h6></td>
+                                                <td>
+                                                    <div class="input-group">
+                                                        <input id="addprice" name="addprice" class="form-control" type="text"
+                                                               value="{{ (current_setup.addAmt if current_setup else None) or '40000' }}" max="100000" placeholder="40,000"
+                                                               style="text-align: right"
+                                                               oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');"/>
+                                                        <div class="input-group-append"><span class="input-group-text">원</span></div>
+                                                    </div>
+                                                    <small class="text-muted">조정 시 추가 매수 또는 구출 작전에 투입될 1회당 금액입니다.</small>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="align-middle bg-light"><h6 class="font-weight-bold mb-0 text-dark">투자 한계 금액 (코인당 최대)</h6></td>
+                                                <td colspan="2">
+                                                    <div class="input-group" style="max-width: 400px;">
+                                                        <input id="limitamt" name="limitamt" class="form-control" min="10000" max="1000000"
+                                                               value="{{ (current_setup.limitAmt if current_setup else None) or '400000' }}" step="100000" style="text-align: right">
+                                                        <div class="input-group-append"><span class="input-group-text">원</span></div>
+                                                    </div>
+                                                    <small class="text-muted">한 종목에 투입될 수 있는 누적 최대 투자 한도액입니다.</small>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="align-middle bg-light"><h6 class="font-weight-bold mb-0 text-dark">최소 익절 목표율</h6></td>
+                                                <td colspan="2">
+                                                    <div class="input-group" style="max-width: 250px;">
+                                                        <input type="number" id="minmargin" name="minmargin" min="0.15" max="100"
+                                                               value="{{ (current_setup.minMargin if current_setup else None) or '0.5' }}" step="0.01" style="text-align: right;">
+                                                        <div class="input-group-append"><span class="input-group-text">%</span></div>
+                                                    </div>
+                                                    <small class="text-muted">기본 목표 익절 수익률입니다. (호가 사다리 및 합산 익절의 기준선)</small>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="align-middle bg-light"><h6 class="font-weight-bold mb-0 text-dark">손절 시작 기준선</h6></td>
+                                                <td colspan="2">
+                                                    <div class="input-group" style="max-width: 250px;">
+                                                        <input type="number" id="lcrate" name="lcrate" min="-10.0" max="0"
+                                                               value="{{ (current_setup.lcRate if current_setup else None) or '-3.0' }}" step="0.01" style="text-align: right;">
+                                                        <div class="input-group-append"><span class="input-group-text">%</span></div>
+                                                    </div>
+                                                    <small class="text-muted">※ 실제 손절은 코인별 30분봉 진폭(v30)에 연동된 동적 손절선(-2%~-4%) 및 대폭락 안전망(-6%~-8.5%)이 자동 작동합니다.</small>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -121,74 +276,148 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-select@1.13.14/dist/css/bootstrap-select.min.css">
 </body>
 <script>
-    $('.selectpicker').selectpicker({
-        style: 'btn-inverse',
-        size: 40
-    });
-    $(document).ready(function () {
-        setinit();
+    const VERSION_FEATURES = {
+        "1": {
+            engine: "mtpond1.py",
+            title: "1버전 : 정통 추세 스캘핑 & 마틴게일 2회 물타기 + 사다리 익절",
+            badge: "안정 추세추종형",
+            badgeClass: "badge-primary",
+            summary: "15분봉 이평선 정배열(MA5 > MA20)과 거래량 급증 종목을 선별 진입하여 최대 5슬롯 사다리 분할 익절과 2회 마틴게일 물타기를 실행하는 가장 정통적이고 안정적인 스캘핑 엔진입니다.",
+            entry: "15분봉 골든크로스 정배열(MA5 > MA20) 및 양봉 확인, 10분 체결량 상위 종목",
+            tp: "5단계 사다리 분할 지정가 익절 (평단가 대비 +0.25% ~ +0.60% 시작, 호가별 분할 매도)",
+            water: "진입가 대비 -1.4% 하락 시 1차, -2.8% 하락 시 2차 마틴게일 물타기 (최대 2회)",
+            stop: "물타기 소진 후 30분봉 진폭 연동 1차 동적 하드손절(-2%~-4%) 및 대폭락 동적 안전망(-6%~-8.5%)",
+            bestFit: "완만한 상승장 및 거래량이 풍부한 일반 알트코인 장세, 꾸준한 회전율 추구"
+        },
+        "2": {
+            engine: "mtpond2.py",
+            title: "2버전 : 거래량 급증 모멘텀 스캘핑 & 2회 물타기 + 긴급 구출",
+            badge: "모멘텀 공격형",
+            badgeClass: "badge-danger",
+            summary: "외부 AI 분석 서버 추천 점수(>=3점)와 10분간 체결량 60건 이상의 급등 모멘텀 코인에 집중 진입하며, 낙폭 구간에서 1종목 긴급 구출(+0.3% 탈출)을 지원합니다.",
+            entry: "BB-Patterns 분석 점수 3점 이상 & 10분 체결량 60건 이상 고유동성 모멘텀 종목",
+            tp: "수수료 및 틱 단위를 정밀 보정한 5단계 사다리 분할 지정가 익절",
+            water: "최대 2회 물타기 + 낙폭(-3.5%~-8.5%) 반등 시 1회 한정 긴급 구출(+0.3% 탈출)",
+            stop: "물타기 소진 후 30분봉 진폭 연동 동적 하드손절(-2%~-4%) 및 대폭락 동적 안전망(-6%~-8.5%)",
+            bestFit: "알트코인 순환 펌핑장, 당일 거래대금이 집중되는 강한 모멘텀 장세"
+        },
+        "3": {
+            engine: "mtpond3.py",
+            title: "3버전 : 레인지 박스권 분할매집 & 2회 물타기 + 합산 분할익절",
+            badge: "박스권 횡보형",
+            badgeClass: "badge-info",
+            summary: "뚜렷한 추세가 없는 횡보장 또는 박스권 눌림목 코인을 포착하여 호가별 분할 그물망 매집을 진행하고, 합산 평단가 기준으로 일괄/분할 익절을 실현합니다.",
+            entry: "박스권 횡보 및 하단 지지선 확인 종목, 안정적인 가격대 유지 코인",
+            tp: "전체 체결 물량의 합산 평단가 기준 목표 수익률 도달 시 단계별 분할 익절",
+            water: "박스 하단 이탈 시 2회 추가 매수 + 15분봉 양봉 반등 감지 구출 연동",
+            stop: "30분봉 진폭 기준 동적 하드손절(-2%~-4%) 및 대폭락 동적 안전망(-6%~-8.5%)",
+            bestFit: "비트코인이 방향성 없이 횡보하는 박스권 장세, 잦은 오르내림 반복 국면"
+        },
+        "4": {
+            engine: "mtpond4.py",
+            title: "4버전 : 방어형 틱 사다리 스캘핑 (비상탈출 + 구출 특화)",
+            badge: "원금보존 수비형",
+            badgeClass: "badge-secondary",
+            summary: "진입 후 -1.4% 하락 시 즉시 '방어 모드'로 자동 전환되어 기존 익절 주문을 취소하고 본전/약익절 호가로 사다리를 재배치해 비상 탈출을 최우선으로 시도하는 수비 특화 엔진입니다.",
+            entry: "15분봉 정배열 모멘텀 진입 + 5단계 사다리 익절",
+            tp: "정상 시 5단계 사다리 익절 / 방어 모드 시 본전 및 약익절 탈출 호가 재배치",
+            water: "방어 탈출 실패 시 15분봉 반등 감지 1종목 집중 구출 매수",
+            stop: "방어 실패 시 30분봉 진폭 기준 동적 손절(-2%~-4%) 및 대폭락 동적 안전망(-6%~-8.5%)",
+            bestFit: "하락 전환 위험이 있거나 불확실성이 큰 장세, 원금 보존 및 리스크 관리가 최우선인 투자자"
+        },
+        "5": {
+            engine: "mtpond5.py",
+            title: "5버전 : 50/20/30 총자산 배분 하이브리드 (추세 50% + 그리드 20% + 현금 30%)",
+            badge: "올라운드 하이브리드",
+            badgeClass: "badge-success",
+            summary: "총자산을 추세 스캘핑(50%), 횡보 그리드(20%), 현금 안전버퍼(30%)로 자동 격리 배분하여, 상승장과 횡보장을 동시 공략하면서도 30% 현금 완충으로 자산을 강력하게 보호합니다.",
+            entry: "상승 모멘텀 종목은 추세 진입 / 횡보(밴드폭 1.2%~3.0%) 종목은 4단계 그리드 그물망 배치",
+            tp: "추세 종목: 5단계 사다리 분할 익절 / 그리드 종목: +0.5% 합산 일괄 익절",
+            water: "그리드 4단계 분할 매수망(-0.5% 간격) + 4대 안전축(15% 캡, 10분 쿨다운, 1시간 타임아웃, BTC NORMAL)",
+            stop: "그리드/추세 전 포지션 30분봉 진폭 연동 동적 하드손절(-2%~-4%) 및 대폭락 동적 안전망(-6%~-8.5%)",
+            bestFit: "상승과 횡보가 혼재된 모든 시장 국면, 장기적으로 안정적인 복리 성장을 추구하는 투자자"
+        },
+        "6": {
+            engine: "mtpond6.py",
+            title: "6버전 : 4-Bucket 정밀 자산배분 (초기 20% / 물타기 40% / 돌파 10% / 예비금 30%)",
+            badge: "포트폴리오 전략가형",
+            badgeClass: "badge-warning text-dark",
+            summary: "총자산을 초기(20%), 물타기(40%), 전고점 돌파 불타기(10%), 현금예비금(30%)의 4개 독립 버킷으로 관리하며, 횡보 그리드와 피라미딩(불타기)을 동시에 전개하는 최고급 포트폴리오 엔진입니다.",
+            entry: "추세 스캘핑 다종목 진입 + 횡보 1종목 4단계 그리드 하베스트 병행",
+            tp: "추세 사다리 분할 익절 + 그리드 합산 +0.5% 익절",
+            water: "전고점 돌파 시 1회 불타기(10% 버킷) + 조정 반등 시 1회 물타기(40% 버킷) + 4대 안전축 구출",
+            stop: "전 포지션 30분봉 진폭 기준 동적 하드손절(-2%~-4%) 및 대폭락 동적 안전망(-6%~-8.5%)",
+            bestFit: "시드 머니 규모가 크거나, 체계적인 자산 배분과 공격적 수익 극대화(불타기)를 병행하고자 하는 투자자"
+        }
+    };
 
+    function selectVersion(ver) {
+        if (!ver || !VERSION_FEATURES[ver]) {
+            ver = "1";
+        }
+
+        // 1. 셀렉트 박스 동기화
+        $('#activeVer').val(ver);
+
+        // 2. 빠른 선택 카드 하이라이트 동기화
+        $('.version-card').removeClass('active');
+        $(`.version-card[data-ver="${ver}"]`).addClass('active');
+
+        // 3. 상세 특징 패널 업데이트
+        const data = VERSION_FEATURES[ver];
+        $('#vDetailTitle').text(data.title);
+        $('#vDetailBadge').text(data.badge).attr('class', 'badge ' + data.badgeClass);
+        $('#vDetailEngine').text(data.engine);
+        $('#vDetailSummary').text(data.summary);
+        $('#vDetailEntry').text(data.entry);
+        $('#vDetailTP').text(data.tp);
+        $('#vDetailWater').text(data.water);
+        $('#vDetailStop').text(data.stop);
+        $('#vDetailBest').text(data.bestFit);
+    }
+
+    $(document).ready(function () {
+        // 기존 설정된 버전 복원 (없으면 1버전 기본)
+        let initialVer = "{{ (current_setup.activeVer if current_setup else None) or '1' }}";
+        selectVersion(initialVer);
+
+        // 금액 콤마 포맷팅 초기화
         let initVal = $('#initprice').val();
-        $('#initprice').val(numberWithCommas(initVal));
+        $('#initprice').val(numberWithCommas(numberNoneCommas(initVal)));
 
         let addVal = $('#addprice').val();
-        $('#addprice').val(numberWithCommas(addVal));
+        $('#addprice').val(numberWithCommas(numberNoneCommas(addVal)));
+
+        let limitVal = $('#limitamt').val();
+        $('#limitamt').val(numberWithCommas(numberNoneCommas(limitVal)));
     });
 
-     $('#initprice').change(function () {
-        var valu = $('#initprice').val();
-        if (valu < 10000) {
-            valu = 10000
-        } else if (valu > 1000000) {
-            valu = 1000000
-        }
-        $('#initprice').val(numberWithCommas(valu));
+    $('#initprice').change(function () {
+        var valu = parseInt(numberNoneCommas($(this).val())) || 10000;
+        valu = Math.max(10000, Math.min(1000000, valu));
+        $(this).val(numberWithCommas(valu));
     });
 
     $('#addprice').change(function () {
-        var valu = $('#addprice').val();
-        if (valu < 10000) {
-            valu = 10000
-        } else if (valu > 1000000) {
-            valu = 1000000
-        }
-        $('#addprice').val(numberWithCommas(valu));
+        var valu = parseInt(numberNoneCommas($(this).val())) || 10000;
+        valu = Math.max(10000, Math.min(1000000, valu));
+        $(this).val(numberWithCommas(valu));
     });
 
-
-    $('#tradeset').change(function () {
-        var trholdno = $('#tradeset').val();
-        var trintv = trholdno.split(',');
-        var intv = trintv[2];
-        $('#bidsteps').val(intv);
+    $('#limitamt').change(function () {
+        var valu = parseInt(numberNoneCommas($(this).val())) || 10000;
+        valu = Math.max(10000, Math.min(10000000, valu));
+        $(this).val(numberWithCommas(valu));
     });
-
-    $('#profitrate').change(function () {
-        var irate = $('#profitrate').val();
-        var $Iarr = $(".intinput");
-        if ($('#intchkb').is(":checked") === true) {
-            for (k = 0; k < $Iarr.length; k++) {
-                $Iarr[k].value = irate;
-            }
-        } else {
-        }
-    });
-
-    function setinit() {
-        var trholdno = $('#tradeset').val();
-        var trintv = trholdno.split(',');
-        var intv = trintv[1];
-        $('#bidsteps').val(intv);
-
-    }
 
     function numberWithCommas(x) {
+        if (!x) return "0";
         return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     }
 
     function numberNoneCommas(x) {
+        if (!x) return "0";
         return x.toString().replace(/[\D\s\._\-]+/g, "");
     }
-
 </script>
 </html>

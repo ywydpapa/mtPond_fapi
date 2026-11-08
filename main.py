@@ -1328,9 +1328,12 @@ async def mypondSet(request: Request, userno: int, db: AsyncSession = Depends(ge
     setkey = request.session.get("setKey")
     trcnt = request.session.get("License")
     serverno = request.session.get("server_No")
+    mysetups = await get_mtsetups(userno, db)
+    current_setup = mysetups[0] if mysetups else {}
     return templates.TemplateResponse('/trade/setmtpond.html', {
         "request": request, "coinlist": coinlist, "trcnt": trcnt,
-        "user_Name": userName, "setkey": setkey, "user_No": userno, "user_Role": userRole, "server_No": serverno
+        "user_Name": userName, "setkey": setkey, "user_No": userno, "user_Role": userRole, "server_No": serverno,
+        "current_setup": current_setup
     })
 
 
