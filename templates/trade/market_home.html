@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>KRW-BTC 시세 - Mt.Pond AI Trader</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 24px;
+            color: #263238;
+            background: #f5f7fa;
+            font-family: Arial, "Malgun Gothic", sans-serif;
+        }
+        main {
+            width: min(100%, 1100px);
+            margin: 0 auto;
+        }
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        h1 { margin: 0; font-size: 1.5rem; }
+        nav { display: flex; gap: 16px; }
+        a { color: #3568c0; text-decoration: none; }
+        .card {
+            padding: 20px;
+            border-radius: 8px;
+            background: #fff;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, .08);
+        }
+        .price-row {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        #current-price { font-size: 1.6rem; font-weight: 700; }
+        #chart-status { color: #687782; font-size: .9rem; }
+        .chart-wrap { height: min(65vh, 520px); min-height: 280px; }
+        @media (max-width: 600px) {
+            body { padding: 16px; }
+            header, .price-row { align-items: flex-start; flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+<main>
+    <header>
+        <h1>KRW-BTC 가격 변동</h1>
+        <nav>
+            <a href="/mymtpondstat/{{ user_No }}/{{ setkey }}">트레이딩 화면</a>
+            <a href="/logout">로그아웃</a>
+        </nav>
+    </header>
+    <section class="card" aria-label="KRW-BTC 가격 그래프">
+        <div class="price-row">
+            <strong id="current-price">가격 확인 중...</strong>
+            <span id="chart-status" role="status">최근 60분 시세를 불러오는 중입니다.</span>
+        </div>
+        <div class="chart-wrap">
+            <canvas id="btc-chart" aria-label="KRW-BTC 최근 60분 가격 그래프"></canvas>
+        </div>
+    </section>
+</main>
+<script src="/static/vendor/chart.js/Chart.min.js"></script>
+<script>
+    const statusElement = document.getElementById('chart-status');
+    const priceElement = document.getElementById('current-price');
+    const chart = new Chart(document.getElementById('btc-chart').getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'KRW-BTC',
+                data: [],
+                borderColor: '#3568c0',
+                backgroundColor: 'rgba(53, 104, 192, 0.12)',
+                borderWidth: 2,
+                pointRadius: 0,
+                lineTension: 0.2,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            legend: { display: false },
+            scales: {
+                xAxes: [{ gridLines: { display: false }, ticks: { maxTicksLimit: 10 } }],
+                yAxes: [{
+                    scaleLabel: { display: true, labelString: '가격 (KRW)' },
+                    ticks: {
+                        callback: function(value) {
+                            return Number(value).toLocaleString('ko-KR');
+                        }
+                    }
+                }]
+            },
+            tooltips: {
+                callbacks: {
+                    label: function(item) {
+                        return Number(item.yLabel).toLocaleString('ko-KR') + ' KRW';
+                    }
+                }
+            }
+        }
+    });
+
+    function formatPrice(price) {
+        return Number(price).toLocaleString('ko-KR') + ' KRW';
+    }
+
+    function getKoreanMinute() {
+        return new Intl.DateTimeFormat('ko-KR', {
+            timeZone: 'Asia/Seoul',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        }).format(new Date());
+    }
+
+    function addPricePoint(label, price) {
+        const labels = chart.data.labels;
+        const prices = chart.data.datasets[0].data;
+        if (labels[labels.length - 1] === label) {
+            prices[prices.length - 1] = price;
+        } else {
+            labels.push(label);
+            prices.push(price);
+            if (labels.length > 60) {
+                labels.shift();
+                prices.shift();
+            }
+        }
+        chart.update(0);
+    }
+
+    async function loadCandles() {
+        const response = await fetch('/api/market/krw-btc-candles');
+        if (!response.ok) {
+            throw new Error('시세 조회 실패 (' + response.status + ')');
+        }
+        const candles = await response.json();
+        chart.data.labels = candles.map(candle => candle.time.slice(11, 16));
+        chart.data.datasets[0].data = candles.map(candle => candle.price);
+        chart.update();
+        priceElement.textContent = formatPrice(candles[candles.length - 1].price);
+    }
+
+    function connectPriceStream() {
+        const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const socket = new WebSocket(protocol + '//' + location.host + '/ws/trade?coins=KRW-BTC');
+        let isLeaving = false;
+
+        socket.onopen = function() {
+            statusElement.textContent = '실시간 시세 연결됨';
+        };
+        socket.onmessage = function(event) {
+            const trade = JSON.parse(event.data);
+            const price = Number(trade.trade_price);
+            if (!Number.isFinite(price)) return;
+            addPricePoint(getKoreanMinute(), price);
+            priceElement.textContent = formatPrice(price);
+        };
+        socket.onerror = function() {
+            statusElement.textContent = '실시간 시세 연결에 문제가 있습니다.';
+        };
+        socket.onclose = function() {
+            if (!isLeaving) {
+                statusElement.textContent = '실시간 시세 재연결 중...';
+                window.setTimeout(connectPriceStream, 3000);
+            }
+        };
+        window.addEventListener('beforeunload', function() {
+            isLeaving = true;
+            socket.close();
+        }, { once: true });
+    }
+
+    loadCandles().catch(function(error) {
+        console.error('KRW-BTC 시세 조회 실패:', error);
+        statusElement.textContent = '이전 시세를 불러오지 못했습니다. 실시간 가격을 연결합니다.';
+    }).finally(connectPriceStream);
+</script>
+</body>
+</html>

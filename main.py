@@ -1053,13 +1053,57 @@ async def login(
     request.session["user_Role"] = user_row[3]
     request.session["License"] = user_row[4]
     request.session["setKey"] = setkey
-    return RedirectResponse(url=f"/mymtpondstat/{user_row[0]}/{setkey}", status_code=303)
+    return RedirectResponse(url="/market-home", status_code=303)
 
 
 @app.get("/logout")
 async def logout(request: Request):
     request.session.clear()
     return RedirectResponse(url="/")
+
+
+@app.get("/market-home")
+async def market_home(request: Request, user_session: int = Depends(require_login)):
+    return templates.TemplateResponse("/trade/market_home.html", {
+        "request": request,
+        "user_No": user_session,
+        "user_Name": request.session.get("user_Name"),
+        "setkey": request.session.get("setKey"),
+    })
+
+
+@app.get("/api/market/krw-btc-candles")
+async def get_krw_btc_candles(user_session: int = Depends(require_login)):
+    url = "https://api.upbit.com/v1/candles/minutes/1"
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get(url, params={"market": "KRW-BTC", "count": 60})
+            response.raise_for_status()
+            data = response.json()
+    except httpx.HTTPError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="업비트 KRW-BTC 시세를 불러오지 못했습니다.",
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="업비트 KRW-BTC 시세 응답을 읽을 수 없습니다.",
+        ) from exc
+
+    if not isinstance(data, list):
+        raise HTTPException(status_code=502, detail="업비트 KRW-BTC 시세 응답이 올바르지 않습니다.")
+
+    candles = [
+        {"time": item["candle_date_time_kst"], "price": item["trade_price"]}
+        for item in reversed(data)
+        if isinstance(item, dict)
+        and isinstance(item.get("candle_date_time_kst"), str)
+        and isinstance(item.get("trade_price"), (int, float))
+    ]
+    if not candles:
+        raise HTTPException(status_code=502, detail="업비트 KRW-BTC 시세 데이터가 없습니다.")
+    return candles
 
 
 @app.get("/hotcoin_list/{uno}")
