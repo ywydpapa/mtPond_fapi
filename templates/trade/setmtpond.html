@@ -164,12 +164,96 @@
                                 </div>
                             </div>
 
-                            <!-- 2. 매매 세부 파라미터 입력 테이블 -->
+                            <!-- 2. 매매 자금 및 분산 투자 포트폴리오 설정 -->
                             <div class="card mb-4 border-left-success shadow-sm">
-                                <div class="card-header bg-white py-3">
-                                    <h6 class="m-0 font-weight-bold text-success"><i class="fas fa-coins mr-2"></i>2. 매매 자금 및 목표치 설정</h6>
+                                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                                    <h6 class="m-0 font-weight-bold text-success"><i class="fas fa-coins mr-2"></i>2. 매매 자금 및 분산 투자 포트폴리오 설정</h6>
+                                    <span class="badge badge-success px-2 py-1"><i class="fas fa-shield-alt mr-1"></i>정밀 자산배분 (시작 20% / 추가 40% / 구축 예비비 40%)</span>
                                 </div>
                                 <div class="card-body">
+                                    <!-- A. 총 투자금액 및 분산 코인 수 입력 영역 -->
+                                    <div class="row bg-light rounded p-3 mb-3 border">
+                                        <div class="col-md-6 mb-3 mb-md-0">
+                                            <label for="totalamt" class="font-weight-bold text-dark">
+                                                <i class="fas fa-wallet text-primary mr-1"></i>총 투자금액 (전체 시드 머니)
+                                            </label>
+                                            <div class="input-group">
+                                                <input id="totalamt" name="totalamt" class="form-control form-control-lg font-weight-bold text-right" type="text"
+                                                       value="2,000,000" inputmode="numeric" placeholder="2,000,000"
+                                                       oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');"/>
+                                                <div class="input-group-append"><span class="input-group-text font-weight-bold">원</span></div>
+                                            </div>
+                                            <div class="mt-2 d-flex flex-wrap" style="gap: 4px;">
+                                                <button type="button" class="btn btn-sm btn-outline-secondary btn-quick-total" data-val="1000000">100만</button>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary btn-quick-total" data-val="2000000">200만</button>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary btn-quick-total" data-val="3000000">300만</button>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary btn-quick-total" data-val="5000000">500만</button>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary btn-quick-total" data-val="10000000">1,000만</button>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary btn-quick-total" data-val="20000000">2,000만</button>
+                                            </div>
+                                            <small class="text-muted d-block mt-1">트레이딩 봇이 운용할 전체 총 투자 자금 규모입니다.</small>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <label for="maxcoincnt" class="font-weight-bold text-dark">
+                                                <i class="fas fa-th-large text-info mr-1"></i>최대 매수 코인 수 (분산 투자)
+                                            </label>
+                                            <div class="input-group">
+                                                <input id="maxcoincnt" name="maxcoincnt" class="form-control form-control-lg font-weight-bold text-right" type="number"
+                                                       min="1" max="30" step="1"
+                                                       value="{{ (current_setup.maxCoincnt if current_setup and current_setup.maxCoincnt else None) or 5 }}"
+                                                       placeholder="5"/>
+                                                <div class="input-group-append"><span class="input-group-text font-weight-bold">개 코인</span></div>
+                                            </div>
+                                            <div class="mt-2 d-flex flex-wrap" style="gap: 4px;">
+                                                <button type="button" class="btn btn-sm btn-outline-info btn-quick-coin" data-val="3">3개</button>
+                                                <button type="button" class="btn btn-sm btn-info btn-quick-coin font-weight-bold" data-val="5">5개 (추천)</button>
+                                                <button type="button" class="btn btn-sm btn-outline-info btn-quick-coin" data-val="7">7개</button>
+                                                <button type="button" class="btn btn-sm btn-outline-info btn-quick-coin" data-val="10">10개</button>
+                                            </div>
+                                            <small class="text-muted d-block mt-1">안정적 리스크 분산을 위해 <strong>5개 정도의 코인 분산투자</strong>를 권장합니다.</small>
+                                        </div>
+                                    </div>
+
+                                    <!-- B. 자산 배분 비주얼 요약 카드 (20% / 40% / 40%) -->
+                                    <div class="card bg-white border mb-3 shadow-sm">
+                                        <div class="card-body p-3">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <span class="font-weight-bold text-dark"><i class="fas fa-chart-pie mr-1 text-primary"></i>포트폴리오 자산 배분 현황</span>
+                                                <button type="button" class="btn btn-sm btn-outline-primary" id="btnRecalc" onclick="autoCalculateAllocations();">
+                                                    <i class="fas fa-sync-alt mr-1"></i>배분율(20:40:40) 자동 재계산
+                                                </button>
+                                            </div>
+                                            <!-- 배분 프로그레스 바 -->
+                                            <div class="progress mb-2" style="height: 22px; font-size: 0.85rem;">
+                                                <div class="progress-bar bg-success font-weight-bold" role="progressbar" style="width: 20%;" aria-valuenow="20" aria-valuemin="0" aria-valuemax="100">
+                                                    시작 매수 20%
+                                                </div>
+                                                <div class="progress-bar bg-primary font-weight-bold" role="progressbar" style="width: 40%;" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100">
+                                                    추가 매수 40%
+                                                </div>
+                                                <div class="progress-bar bg-warning text-dark font-weight-bold" role="progressbar" style="width: 40%;" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100">
+                                                    구축 예비비 40%
+                                                </div>
+                                            </div>
+                                            <div class="row text-center mt-2">
+                                                <div class="col-4 border-right">
+                                                    <small class="text-muted d-block">전체 시작 매수 (20%)</small>
+                                                    <span id="summaryInitTotal" class="font-weight-bold text-success" style="font-size: 0.95rem;">-</span>
+                                                </div>
+                                                <div class="col-4 border-right">
+                                                    <small class="text-muted d-block">전체 추가 매수 (40%)</small>
+                                                    <span id="summaryAddTotal" class="font-weight-bold text-primary" style="font-size: 0.95rem;">-</span>
+                                                </div>
+                                                <div class="col-4">
+                                                    <small class="text-muted d-block">전체 구축/구출 예비비용 (40%)</small>
+                                                    <span id="summaryReserveTotal" class="font-weight-bold text-warning text-dark" style="font-size: 0.95rem;">-</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- C. 세부 매매 파라미터 (코인당 예산 및 주문 금액) -->
                                     <div class="table-responsive">
                                         <table class="table table-bordered mb-0" id="dataTable" width="100%" cellspacing="0">
                                             <colgroup>
@@ -178,45 +262,74 @@
                                                 <col width="30%"/>
                                             </colgroup>
                                             <tr>
-                                                <td class="align-middle bg-light"><h6 class="font-weight-bold mb-0 text-dark">시작 매수 금액</h6></td>
-                                                <td>
+                                                <td class="align-middle bg-light">
+                                                    <h6 class="font-weight-bold mb-0 text-dark">코인당 총 투자 예산</h6>
+                                                    <small class="badge badge-info">총 투자금 ÷ 코인수</small>
+                                                </td>
+                                                <td colspan="1">
                                                     <div class="input-group">
-                                                        <input id="initprice" name="initprice" class="form-control" type="text"
-                                                               value="{{ (current_setup.initAmt if current_setup else None) or '200000' }}" max="1000000" placeholder="200,000"
-                                                               style="text-align: right"
+                                                        <input id="limitamt" name="limitamt" class="form-control" type="text"
+                                                               value="{{ (current_setup.limitAmt if current_setup else None) or '400000' }}" inputmode="numeric"
+                                                               style="text-align: right; font-weight: bold;"
                                                                oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');"/>
                                                         <div class="input-group-append"><span class="input-group-text">원</span></div>
                                                     </div>
-                                                    <small class="text-muted">종목당 1차 진입 주문 금액입니다. (최소 10,000원 ~ 최대 1,000,000원)</small>
+                                                    <small class="text-muted">코인 1개에 할당되는 최대 전체 예산 한도입니다. (시작매수 + 추가매수 + 구축예비비 포함)</small>
                                                 </td>
-                                                <td class="align-middle text-center" rowspan="2">
+                                                <td class="align-middle text-center" rowspan="4">
                                                     <button type="submit" class="btn btn-primary btn-lg font-weight-bold shadow px-4 py-3" id="savebtn">
                                                         <i class="fas fa-save mr-2"></i>설정 저장 및 적용
                                                     </button>
+                                                    <div class="mt-2 text-muted small">
+                                                        <i class="fas fa-check-circle text-success mr-1"></i>Redis 엔진에 즉시 동기화됩니다
+                                                    </div>
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <td class="align-middle bg-light"><h6 class="font-weight-bold mb-0 text-dark">추가 매수 금액 (물타기/구출)</h6></td>
+                                                <td class="align-middle bg-light">
+                                                    <h6 class="font-weight-bold mb-0 text-dark">시작 매수 금액</h6>
+                                                    <small class="badge badge-success">전체 20% ÷ 코인수</small>
+                                                </td>
                                                 <td>
                                                     <div class="input-group">
-                                                        <input id="addprice" name="addprice" class="form-control" type="text"
-                                                               value="{{ (current_setup.addAmt if current_setup else None) or '40000' }}" max="100000" placeholder="40,000"
-                                                               style="text-align: right"
+                                                        <input id="initprice" name="initprice" class="form-control" type="text"
+                                                               value="{{ (current_setup.initAmt if current_setup else None) or '80000' }}" placeholder="80,000"
+                                                               style="text-align: right; font-weight: bold; color: #1cc88a;"
                                                                oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');"/>
                                                         <div class="input-group-append"><span class="input-group-text">원</span></div>
                                                     </div>
-                                                    <small class="text-muted">조정 시 추가 매수 또는 구출 작전에 투입될 1회당 금액입니다.</small>
+                                                    <small class="text-muted">전체 투자금의 20%를 코인수로 나눈 1회차 최초 진입 매수 금액입니다.</small>
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <td class="align-middle bg-light"><h6 class="font-weight-bold mb-0 text-dark">투자 한계 금액 (코인당 최대)</h6></td>
-                                                <td colspan="2">
-                                                    <div class="input-group" style="max-width: 400px;">
-                                                        <input id="limitamt" name="limitamt" class="form-control" min="10000" max="1000000"
-                                                               value="{{ (current_setup.limitAmt if current_setup else None) or '400000' }}" step="100000" style="text-align: right">
+                                                <td class="align-middle bg-light">
+                                                    <h6 class="font-weight-bold mb-0 text-dark">추가 매수 금액 (물타기)</h6>
+                                                    <small class="badge badge-primary">전체 40% ÷ 코인수</small>
+                                                </td>
+                                                <td>
+                                                    <div class="input-group">
+                                                        <input id="addprice" name="addprice" class="form-control" type="text"
+                                                               value="{{ (current_setup.addAmt if current_setup else None) or '160000' }}" placeholder="160,000"
+                                                               style="text-align: right; font-weight: bold; color: #4e73df;"
+                                                               oninput="this.value = this.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');"/>
                                                         <div class="input-group-append"><span class="input-group-text">원</span></div>
                                                     </div>
-                                                    <small class="text-muted">한 종목에 투입될 수 있는 누적 최대 투자 한도액입니다.</small>
+                                                    <small class="text-muted">전체 투자금의 40%를 코인수로 나눈 조정 시 2회차 물타기 매수 금액입니다.</small>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="align-middle bg-light">
+                                                    <h6 class="font-weight-bold mb-0 text-dark">구축 및 구출 예비비용</h6>
+                                                    <small class="badge badge-warning text-dark">잔여 40% ÷ 코인수</small>
+                                                </td>
+                                                <td>
+                                                    <div class="p-2 rounded bg-light border d-flex justify-content-between align-items-center">
+                                                        <span class="text-muted font-weight-bold">코인당 배정 예비비:</span>
+                                                        <span id="reservePerCoin" class="font-weight-bold text-dark" style="font-size: 1.05rem;">- 원</span>
+                                                    </div>
+                                                    <small class="text-muted mt-1 d-block">
+                                                        <i class="fas fa-shield-alt text-warning mr-1"></i>급격한 하락장에서의 긴급 구출 매수 및 유동성 안전 버퍼로 보존되는 예비 자금입니다.
+                                                    </small>
                                                 </td>
                                             </tr>
                                             <tr>
@@ -376,38 +489,180 @@
         $('#vDetailBest').text(data.bestFit);
     }
 
+    // 20% / 40% / 40% 정밀 자산배분 자동 계산
+    function autoCalculateAllocations() {
+        const total = parseInt(numberNoneCommas($('#totalamt').val()), 10) || 0;
+        let coins = parseInt($('#maxcoincnt').val(), 10) || 5;
+        if (coins < 1) coins = 1;
+        if (coins > 30) coins = 30;
+
+        // 1. 코인당 총 투자 예산 = 총 투자금 / 코인수
+        const limitAmt = Math.floor(total / coins);
+        // 2. 시작 매수 금액 = (총 투자금 * 0.20) / 코인수 = limitAmt * 0.20
+        const initPrice = Math.floor((total * 0.20) / coins);
+        // 3. 추가 매수 금액 = (총 투자금 * 0.40) / 코인수 = limitAmt * 0.40
+        const addPrice = Math.floor((total * 0.40) / coins);
+        // 4. 구축/구출 예비비용 (코인당 잔여 40%) = limitAmt - initPrice - addPrice
+        const reservePerCoin = Math.max(0, limitAmt - initPrice - addPrice);
+        // 전체 구축 예비비용 (전체 40%)
+        const reserveTotal = Math.max(0, total - (initPrice * coins) - (addPrice * coins));
+
+        $('#limitamt').val(numberWithCommas(limitAmt));
+        $('#initprice').val(numberWithCommas(initPrice));
+        $('#addprice').val(numberWithCommas(addPrice));
+        $('#reservePerCoin').text(numberWithCommas(reservePerCoin) + ' 원');
+
+        // 요약 현황 텍스트 갱신
+        $('#summaryInitTotal').text(numberWithCommas(initPrice * coins) + ' 원 (코인당 ' + numberWithCommas(initPrice) + '원)');
+        $('#summaryAddTotal').text(numberWithCommas(addPrice * coins) + ' 원 (코인당 ' + numberWithCommas(addPrice) + '원)');
+        $('#summaryReserveTotal').text(numberWithCommas(reserveTotal) + ' 원 (코인당 ' + numberWithCommas(reservePerCoin) + '원)');
+    }
+
+    // 세부 금액 수동 수정 시 예비비용 및 자산배분 동기화
+    function syncCustomAllocations() {
+        const limitAmt = parseInt(numberNoneCommas($('#limitamt').val()), 10) || 0;
+        const initPrice = parseInt(numberNoneCommas($('#initprice').val()), 10) || 0;
+        const addPrice = parseInt(numberNoneCommas($('#addprice').val()), 10) || 0;
+        let coins = parseInt($('#maxcoincnt').val(), 10) || 5;
+        if (coins < 1) coins = 1;
+
+        const reservePerCoin = limitAmt - initPrice - addPrice;
+        if (reservePerCoin < 0) {
+            $('#reservePerCoin').html('<span class="text-danger font-weight-bold">예산 초과: ' + numberWithCommas(reservePerCoin) + ' 원</span>');
+        } else {
+            $('#reservePerCoin').text(numberWithCommas(reservePerCoin) + ' 원');
+        }
+
+        const total = limitAmt * coins;
+        $('#totalamt').val(numberWithCommas(total));
+        const reserveTotal = Math.max(0, total - (initPrice * coins) - (addPrice * coins));
+
+        $('#summaryInitTotal').text(numberWithCommas(initPrice * coins) + ' 원 (코인당 ' + numberWithCommas(initPrice) + '원)');
+        $('#summaryAddTotal').text(numberWithCommas(addPrice * coins) + ' 원 (코인당 ' + numberWithCommas(addPrice) + '원)');
+        $('#summaryReserveTotal').text(numberWithCommas(reserveTotal) + ' 원 (코인당 ' + numberWithCommas(Math.max(0, reservePerCoin)) + '원)');
+    }
+
     $(document).ready(function () {
         // 기존 설정된 버전 복원 (없으면 1버전 기본)
         let initialVer = "{{ (current_setup.activeVer if current_setup else None) or '1' }}";
         selectVersion(initialVer);
 
-        // 금액 콤마 포맷팅 초기화
-        let initVal = $('#initprice').val();
-        $('#initprice').val(numberWithCommas(numberNoneCommas(initVal)));
+        // 초기 자금 및 코인 수 계산
+        let savedLimit = parseInt(numberNoneCommas("{{ (current_setup.limitAmt if current_setup and current_setup.limitAmt else '') }}"), 10) || 0;
+        let savedCoins = parseInt("{{ (current_setup.maxCoincnt if current_setup and current_setup.maxCoincnt else '') }}", 10) || 5;
+        let savedInit = parseInt(numberNoneCommas("{{ (current_setup.initAmt if current_setup and current_setup.initAmt else '') }}"), 10) || 0;
+        let savedAdd = parseInt(numberNoneCommas("{{ (current_setup.addAmt if current_setup and current_setup.addAmt else '') }}"), 10) || 0;
 
-        let addVal = $('#addprice').val();
-        $('#addprice').val(numberWithCommas(numberNoneCommas(addVal)));
+        $('#maxcoincnt').val(savedCoins);
 
-        let limitVal = $('#limitamt').val();
-        $('#limitamt').val(numberWithCommas(numberNoneCommas(limitVal)));
+        if (savedLimit > 0) {
+            let total = savedLimit * savedCoins;
+            $('#totalamt').val(numberWithCommas(total));
+            $('#limitamt').val(numberWithCommas(savedLimit));
+
+            if (savedInit > 0 && savedAdd > 0) {
+                $('#initprice').val(numberWithCommas(savedInit));
+                $('#addprice').val(numberWithCommas(savedAdd));
+                syncCustomAllocations();
+            } else {
+                autoCalculateAllocations();
+            }
+        } else {
+            // 기본값: 총 투자금 2,000,000원, 분산 코인수 5개
+            $('#totalamt').val('2,000,000');
+            $('#maxcoincnt').val('5');
+            autoCalculateAllocations();
+        }
+
+        // 빠른 총액 버튼 클릭
+        $('.btn-quick-total').click(function () {
+            let val = $(this).data('val');
+            $('#totalamt').val(numberWithCommas(val));
+            autoCalculateAllocations();
+        });
+
+        // 빠른 코인수 버튼 클릭
+        $('.btn-quick-coin').click(function () {
+            let val = $(this).data('val');
+            $('#maxcoincnt').val(val);
+            $('.btn-quick-coin').removeClass('btn-info font-weight-bold').addClass('btn-outline-info');
+            $(this).removeClass('btn-outline-info').addClass('btn-info font-weight-bold');
+            autoCalculateAllocations();
+        });
     });
 
-    $('#initprice').change(function () {
-        var valu = parseInt(numberNoneCommas($(this).val())) || 10000;
-        valu = Math.max(10000, Math.min(1000000, valu));
-        $(this).val(numberWithCommas(valu));
+    // 총 투자금액 입력 시 실시간 반영
+    $('#totalamt').on('input', function () {
+        let cur = numberNoneCommas($(this).val());
+        $(this).val(numberWithCommas(cur));
+        autoCalculateAllocations();
     });
 
-    $('#addprice').change(function () {
-        var valu = parseInt(numberNoneCommas($(this).val())) || 10000;
-        valu = Math.max(10000, Math.min(1000000, valu));
-        $(this).val(numberWithCommas(valu));
+    $('#totalamt').change(function () {
+        let val = parseInt(numberNoneCommas($(this).val()), 10) || 50000;
+        val = Math.max(50000, val);
+        $(this).val(numberWithCommas(val));
+        autoCalculateAllocations();
+    });
+
+    // 코인 수 변경 시 자동 반영
+    $('#maxcoincnt').on('input change', function () {
+        let val = parseInt($(this).val(), 10) || 5;
+        val = Math.max(1, Math.min(30, val));
+        $(this).val(val);
+
+        $('.btn-quick-coin').removeClass('btn-info font-weight-bold').addClass('btn-outline-info');
+        $(`.btn-quick-coin[data-val="${val}"]`).removeClass('btn-outline-info').addClass('btn-info font-weight-bold');
+
+        autoCalculateAllocations();
+    });
+
+    // 코인당 총 투자 예산 직접 수정 시
+    $('#limitamt').on('input', function () {
+        let cur = numberNoneCommas($(this).val());
+        $(this).val(numberWithCommas(cur));
+        let coins = parseInt($('#maxcoincnt').val(), 10) || 5;
+        let total = (parseInt(cur, 10) || 0) * coins;
+        $('#totalamt').val(numberWithCommas(total));
+        syncCustomAllocations();
     });
 
     $('#limitamt').change(function () {
-        var valu = parseInt(numberNoneCommas($(this).val())) || 10000;
-        valu = Math.max(10000, Math.min(10000000, valu));
-        $(this).val(numberWithCommas(valu));
+        let val = parseInt(numberNoneCommas($(this).val()), 10) || 50000;
+        val = Math.max(50000, val);
+        $(this).val(numberWithCommas(val));
+        let coins = parseInt($('#maxcoincnt').val(), 10) || 5;
+        let total = val * coins;
+        $('#totalamt').val(numberWithCommas(total));
+        syncCustomAllocations();
+    });
+
+    // 시작 매수 금액 직접 수정 시
+    $('#initprice').on('input', function () {
+        let cur = numberNoneCommas($(this).val());
+        $(this).val(numberWithCommas(cur));
+        syncCustomAllocations();
+    });
+
+    $('#initprice').change(function () {
+        let val = parseInt(numberNoneCommas($(this).val()), 10) || 10000;
+        val = Math.max(10000, val);
+        $(this).val(numberWithCommas(val));
+        syncCustomAllocations();
+    });
+
+    // 추가 매수 금액 직접 수정 시
+    $('#addprice').on('input', function () {
+        let cur = numberNoneCommas($(this).val());
+        $(this).val(numberWithCommas(cur));
+        syncCustomAllocations();
+    });
+
+    $('#addprice').change(function () {
+        let val = parseInt(numberNoneCommas($(this).val()), 10) || 10000;
+        val = Math.max(10000, val);
+        $(this).val(numberWithCommas(val));
+        syncCustomAllocations();
     });
 
     function numberWithCommas(x) {

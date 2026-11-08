@@ -812,16 +812,16 @@ async def setupbid(uno, setkey, initbid, bidstep, bidrate, askrate, coinn, svrno
     return False
 
 
-async def setupmymtpondset(uno, setkey, initbid, addbid, limitbid, minmargin, cutrate, activever, db: AsyncSession):
+async def setupmymtpondset(uno, setkey, initbid, addbid, limitbid, minmargin, cutrate, activever, db: AsyncSession, maxcoincnt: int = 5):
     if await check_setkey(uno, setkey, db):
         try:
             sql = text("""
-                       insert into mtSetup (userNo, initAmt, addAmt, limitAmt, minMargin, lcRate, activeVer)
-                       VALUES (:userNo, :iniBid, :addBid, :limitBid, :minMargin, :losscut, :activeVer)
+                       insert into mtSetup (userNo, initAmt, addAmt, limitAmt, minMargin, lcRate, activeVer, maxCoincnt)
+                       VALUES (:userNo, :iniBid, :addBid, :limitBid, :minMargin, :losscut, :activeVer, :maxCoincnt)
                        """)
             await db.execute(sql, {
                 "userNo": uno, "iniBid": initbid, "addBid": addbid, "limitBid": limitbid, "minMargin": minmargin,
-                "losscut": cutrate, "activeVer": activever
+                "losscut": cutrate, "activeVer": activever, "maxCoincnt": maxcoincnt
             })
             await db.commit()
             return await sync_mtsetup_to_redis(uno, db)
@@ -1451,17 +1451,41 @@ async def setupmtponds(
         lcrate: Optional[str] = Form(None),
         activeVer: int = Form(..., ge=1, le=6),
         setkey: str = Form(...),
+        maxcoincnt: Optional[str] = Form(None),
+        totalamt: Optional[str] = Form(None),
         db: AsyncSession = Depends(get_db),
 ):
     uno = int(userno)
-    initp = initprice.replace(',', '') if initprice else '0'
-    addp = addprice.replace(',', '') if addprice else '0'
-    limitp = limitamt.replace(',', '') if limitamt else '0'
+    try:
+        init_amount = int(initprice.replace(',', ''))
+        add_amount = int(addprice.replace(',', ''))
+        limit_amount = int(limitamt.replace(',', ''))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="투자 금액은 원 단위 정수로 입력해 주세요.") from exc
+
+    try:
+        max_coins = int(maxcoincnt) if maxcoincnt else 5
+    except ValueError:
+        max_coins = 5
+
+    if not 1 <= max_coins <= 30:
+        raise HTTPException(status_code=422, detail="최대 매수 코인 수는 1개부터 30개까지 설정할 수 있습니다.")
+
+    if not 10000 <= init_amount <= 100000000:
+        raise HTTPException(status_code=422, detail="시작 매수 금액은 10,000원부터 100,000,000원(1억원)까지 설정할 수 있습니다.")
+    if not 10000 <= add_amount <= 200000000:
+        raise HTTPException(status_code=422, detail="추가 매수 금액은 10,000원부터 200,000,000원(2억원)까지 설정할 수 있습니다.")
+    if not 50000 <= limit_amount <= 500000000:
+        raise HTTPException(status_code=422, detail="코인당 총 투자 예산은 50,000원부터 500,000,000원(5억원)까지 설정할 수 있습니다.")
+
+    initp = str(init_amount)
+    addp = str(add_amount)
+    limitp = str(limit_amount)
     lcr = lcrate or '0'
     minm = minmargin.replace(',', '') if minmargin else '0'
 
     await erasemtpondsetup(uno, setkey, db)
-    if not await setupmymtpondset(uno, setkey, initp, addp, limitp, minm, lcr, activeVer, db):
+    if not await setupmymtpondset(uno, setkey, initp, addp, limitp, minm, lcr, activeVer, db, maxcoincnt=max_coins):
         raise HTTPException(
             status_code=503,
             detail="mtPond 설정 저장 또는 Redis 설정 동기화에 실패했습니다."
@@ -1686,8 +1710,8 @@ async def update_max_coin_count(
 ):
     if userno != user_session:
         raise HTTPException(status_code=403, detail="권한이 없습니다.")
-    if max_coin_count not in (5, 10, 15, 20):
-        raise HTTPException(status_code=400, detail="최대 구매 코인 수는 5, 10, 15, 20 중 하나여야 합니다.")
+    if not (1 <= max_coin_count <= 30):
+        raise HTTPException(status_code=400, detail="최대 구매 코인 수는 1개부터 30개까지 설정할 수 있습니다.")
 
     result = await db.execute(
         text("""
