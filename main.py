@@ -706,6 +706,11 @@ async def setonoff(uno: int, yesno: str, db: AsyncSession) -> Optional[bool]:
         if existing_setup.fetchone() is None:
             return None
     await db.commit()
+    # 봇 컨트롤러가 즉각 감지할 수 있도록 mtpond:status 키도 함께 갱신
+    try:
+        await redis_client.set(f"mtpond:status:{uno}", "ON" if yesno == "Y" else "OFF", ex=3600)
+    except Exception as e:
+        print(f"[REDIS][WARN] mtpond:status 키 설정 실패: {e}")
     return await sync_mtsetup_to_redis(uno, db)
 
 
