@@ -55,7 +55,7 @@
                             <!-- 1. 전략 버전 선택 영역 -->
                             <div class="card mb-4 border-left-primary shadow-sm">
                                 <div class="card-header bg-white py-3">
-                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-robot mr-2"></i>1. 트레이딩 엔진 버전 선택 (mtpond1.py ~ mtpond6.py)</h6>
+                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-robot mr-2"></i>1. 트레이딩 엔진 버전 선택 (mtpond1.py ~ mtpond7.py)</h6>
                                 </div>
                                 <div class="card-body">
                                     <div class="form-group mb-3">
@@ -67,51 +67,59 @@
                                             <option value="4">4버전 (mtpond4.py) : 방어형 틱 사다리 스캘핑 (비상탈출 + 구출 특화)</option>
                                             <option value="5">5버전 (mtpond5.py) : 50/20/30 자산배분 하이브리드 (추세 50% + 그리드 20% + 현금 30%)</option>
                                             <option value="6">6버전 (mtpond6.py) : 4-Bucket 정밀 자산배분 (초기 20% / 물타기 40% / 돌파 10% / 예비금 30%)</option>
+                                            <option value="7">7버전 (mtpond7.py) : 일일 1% 특화 퀀트 (선지정가 Spike Catcher + 본절 2단사다리 + BTC필터)</option>
                                         </select>
                                     </div>
 
-                                    <!-- 6개 빠른 선택 카드 -->
+                                    <!-- 7개 빠른 선택 카드 -->
                                     <div class="row no-gutters mb-3">
-                                        <div class="col-6 col-md-4 col-lg-2 p-1">
+                                        <div class="col-6 col-md-3 col-lg p-1">
                                             <div class="card version-card text-center p-2 h-100" data-ver="1" onclick="selectVersion('1')">
                                                 <div class="font-weight-bold text-primary"><i class="fas fa-chart-line"></i> 1버전</div>
-                                                <small class="text-muted d-block mt-1">정통 추세 스캘핑</small>
+                                                <small class="text-muted d-block mt-1">정통 추세</small>
                                                 <span class="badge badge-primary mt-1">안정 추세추종</span>
                                             </div>
                                         </div>
-                                        <div class="col-6 col-md-4 col-lg-2 p-1">
+                                        <div class="col-6 col-md-3 col-lg p-1">
                                             <div class="card version-card text-center p-2 h-100" data-ver="2" onclick="selectVersion('2')">
                                                 <div class="font-weight-bold text-danger"><i class="fas fa-bolt"></i> 2버전</div>
                                                 <small class="text-muted d-block mt-1">급등 모멘텀</small>
-                                                <span class="badge badge-danger mt-1">고유동성 공격형</span>
+                                                <span class="badge badge-danger mt-1">고유동 공격형</span>
                                             </div>
                                         </div>
-                                        <div class="col-6 col-md-4 col-lg-2 p-1">
+                                        <div class="col-6 col-md-3 col-lg p-1">
                                             <div class="card version-card text-center p-2 h-100" data-ver="3" onclick="selectVersion('3')">
                                                 <div class="font-weight-bold text-info"><i class="fas fa-layer-group"></i> 3버전</div>
-                                                <small class="text-muted d-block mt-1">박스권 분할매집</small>
+                                                <small class="text-muted d-block mt-1">박스권 매집</small>
                                                 <span class="badge badge-info mt-1">횡보장 방어형</span>
                                             </div>
                                         </div>
-                                        <div class="col-6 col-md-4 col-lg-2 p-1">
+                                        <div class="col-6 col-md-3 col-lg p-1">
                                             <div class="card version-card text-center p-2 h-100" data-ver="4" onclick="selectVersion('4')">
                                                 <div class="font-weight-bold text-secondary"><i class="fas fa-shield-alt"></i> 4버전</div>
                                                 <small class="text-muted d-block mt-1">방어 틱 사다리</small>
                                                 <span class="badge badge-secondary mt-1">원금보존 수비형</span>
                                             </div>
                                         </div>
-                                        <div class="col-6 col-md-4 col-lg-2 p-1">
+                                        <div class="col-6 col-md-3 col-lg p-1">
                                             <div class="card version-card text-center p-2 h-100" data-ver="5" onclick="selectVersion('5')">
                                                 <div class="font-weight-bold text-success"><i class="fas fa-balance-scale"></i> 5버전</div>
                                                 <small class="text-muted d-block mt-1">50/20/30 배분</small>
-                                                <span class="badge badge-success mt-1">올라운드 하이브리드</span>
+                                                <span class="badge badge-success mt-1">하이브리드</span>
                                             </div>
                                         </div>
-                                        <div class="col-6 col-md-4 col-lg-2 p-1">
+                                        <div class="col-6 col-md-3 col-lg p-1">
                                             <div class="card version-card text-center p-2 h-100" data-ver="6" onclick="selectVersion('6')">
                                                 <div class="font-weight-bold text-warning"><i class="fas fa-cubes"></i> 6버전</div>
                                                 <small class="text-muted d-block mt-1">4-Bucket 배분</small>
                                                 <span class="badge badge-warning text-dark mt-1">피라미딩 불타기</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-3 col-lg p-1">
+                                            <div class="card version-card text-center p-2 h-100" data-ver="7" onclick="selectVersion('7')">
+                                                <div class="font-weight-bold text-dark"><i class="fas fa-crosshairs text-danger"></i> 7버전</div>
+                                                <small class="text-muted d-block mt-1">일일 1% 특화</small>
+                                                <span class="badge badge-dark mt-1">선지정가+본절</span>
                                             </div>
                                         </div>
                                     </div>
@@ -459,8 +467,20 @@
             entry: "추세 스캘핑 다종목 진입 + 횡보 1종목 4단계 그리드 하베스트 병행",
             tp: "추세 사다리 분할 익절 + 그리드 합산 +0.5% 익절",
             water: "전고점 돌파 시 1회 불타기(10% 버킷) + 조정 반등 시 1회 물타기(40% 버킷) + 4대 안전축 구출",
-            stop: "전 포지션 30분봉 진폭 기준 동적 하드손절(-2%~-4%) 및 대폭락 동적 안전망(-6%~-8.5%)",
+            stop: "전 포지션 30분봉 진폭 기준 동적 하드손절(-7.0%~-9.5%) 및 대폭락 동적 안전망(-14.0%~-15.0%)",
             bestFit: "시드 머니 규모가 크거나, 체계적인 자산 배분과 공격적 수익 극대화(불타기)를 병행하고자 하는 투자자"
+        },
+        "7": {
+            engine: "mtpond7.py",
+            title: "7버전 : 일일 1% 수익 실현 특화 퀀트 (Spike Catcher + 본절 2단 사다리 + BTC 체력 필터)",
+            badge: "일일 1% 목표 달성형",
+            badgeClass: "badge-dark",
+            summary: "하루 1% 내외의 복리 이익 실현에 모든 프로세스를 집중한 퀀트 엔진입니다. 매수 즉시 호가창에 선(先) 지정가 매도를 걸어 1초 윗꼬리를 슬리피지 없이 낚아채고, 1차 익절 시 잔여 물량 손절선을 본절(+0.08%)로 올려 '100% 무위험 수익 거래'로 전환합니다.",
+            entry: "15분봉 양봉 & 5일선 골든크로스 + 비트코인(BTC) 3단계 체력 필터(NORMAL만 신규 진입)",
+            tp: "매수 즉시 2단 선(先)지정가 배치: 1차(60%) +0.45%~+0.65% (4틱) / 2차(40%) +0.95%~+1.40% (8틱)",
+            water: "최대 2회 분할 물타기 (조정 반등 시) + 물타기 성공 시 신규 평단가 기준 Spike Catcher 즉시 재배치",
+            stop: "1차 익절 시 잔여 40%는 본절가(+0.08%) 안전망 가동 / 30분봉 진폭 연동 하드손절(-7.0%~-9.5%) & 대폭락 안전망(-14.0%~-15.0%)",
+            bestFit: "하루 약 1% 내외의 꾸준한 복리 수익을 목표로 하며, 물림을 극도로 방지하고 무위험 확정 이익을 누적하고자 하는 투자자"
         }
     };
 

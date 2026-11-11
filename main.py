@@ -1449,7 +1449,7 @@ async def setupmtponds(
         limitamt: str = Form(...),
         minmargin: str = Form(...),
         lcrate: Optional[str] = Form(None),
-        activeVer: int = Form(..., ge=1, le=6),
+        activeVer: int = Form(..., ge=1, le=7),
         setkey: str = Form(...),
         maxcoincnt: Optional[str] = Form(None),
         totalamt: Optional[str] = Form(None),
