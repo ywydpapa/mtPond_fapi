@@ -55,7 +55,7 @@
                             <!-- 1. 전략 버전 선택 영역 -->
                             <div class="card mb-4 border-left-primary shadow-sm">
                                 <div class="card-header bg-white py-3">
-                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-robot mr-2"></i>1. 트레이딩 엔진 버전 선택 (mtpond1.py ~ mtpond7.py)</h6>
+                                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-robot mr-2"></i>1. 트레이딩 엔진 버전 선택 (mtpond1.py ~ mtpond8.py)</h6>
                                 </div>
                                 <div class="card-body">
                                     <div class="form-group mb-3">
@@ -68,10 +68,11 @@
                                             <option value="5">5버전 (mtpond5.py) : 50/20/30 자산배분 하이브리드 (추세 50% + 그리드 20% + 현금 30%)</option>
                                             <option value="6">6버전 (mtpond6.py) : 4-Bucket 정밀 자산배분 (초기 20% / 물타기 40% / 돌파 10% / 예비금 30%)</option>
                                             <option value="7">7버전 (mtpond7.py) : 일일 1% 특화 퀀트 (선지정가 Spike Catcher + 본절 2단사다리 + BTC필터)</option>
+                                            <option value="8">8버전 (mtpond8.py) : 500원 미만 동전주 1~3틱 마이크로 스캘퍼 (초고속 회전 + 고유동성 특화)</option>
                                         </select>
                                     </div>
 
-                                    <!-- 7개 빠른 선택 카드 -->
+                                    <!-- 8개 빠른 선택 카드 -->
                                     <div class="row no-gutters mb-3">
                                         <div class="col-6 col-md-3 col-lg p-1">
                                             <div class="card version-card text-center p-2 h-100" data-ver="1" onclick="selectVersion('1')">
@@ -120,6 +121,13 @@
                                                 <div class="font-weight-bold text-dark"><i class="fas fa-crosshairs text-danger"></i> 7버전</div>
                                                 <small class="text-muted d-block mt-1">일일 1% 특화</small>
                                                 <span class="badge badge-dark mt-1">선지정가+본절</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-3 col-lg p-1">
+                                            <div class="card version-card text-center p-2 h-100" data-ver="8" onclick="selectVersion('8')">
+                                                <div class="font-weight-bold text-success"><i class="fas fa-coins text-warning"></i> 8버전</div>
+                                                <small class="text-muted d-block mt-1">동전주 1~3틱</small>
+                                                <span class="badge badge-success mt-1">&lt;500원 초고속</span>
                                             </div>
                                         </div>
                                     </div>
@@ -481,6 +489,18 @@
             water: "최대 2회 분할 물타기 (조정 반등 시) + 물타기 성공 시 신규 평단가 기준 Spike Catcher 즉시 재배치",
             stop: "1차 익절 시 잔여 40%는 본절가(+0.08%) 안전망 가동 / 30분봉 진폭 연동 하드손절(-7.0%~-9.5%) & 대폭락 안전망(-14.0%~-15.0%)",
             bestFit: "하루 약 1% 내외의 꾸준한 복리 수익을 목표로 하며, 물림을 극도로 방지하고 무위험 확정 이익을 누적하고자 하는 투자자"
+        },
+        "8": {
+            engine: "mtpond8.py",
+            title: "8버전 : 500원 미만 동전주 1~3틱 마이크로 스캘퍼 (초고속 회전 + 고유동성 특화)",
+            badge: "500원 미만 1~3틱 스캘핑",
+            badgeClass: "badge-success",
+            summary: "업비트 호가창 구조상 1틱이 +0.2%~+1.0% 이상의 큰 가치를 갖는 '500원 미만 고유동성 동전주'만을 정밀 타겟팅하여 단 1~3틱 상승만으로 수수료를 훌쩍 넘는 실질 이익을 낚아채는 초고속 스캘핑 엔진입니다.",
+            entry: "현재가 500원 미만 & 2~3틱 내 +0.2% 이상 마진 보장 & 10분 체결 30건 이상 활성 코인 (BTC 정상 시만 진입)",
+            tp: "매수 즉시 1~3틱 선(先)지정가 발주: 1틱 가치 >=0.45%는 1틱 매도, 0.20%~0.45%는 2틱 매도, 그 외 3틱 매도",
+            water: "스캘핑 특성상 불필요한 물타기 지양 (최대 1회 제한) + 90초 진입 간격으로 자금 고갈 방지",
+            stop: "30분봉 진폭 연동 하드손절(-7.0%~-9.5%) & 대폭락 안전망(-14.0%) + BTC 체력 필터 급락 차단",
+            bestFit: "긴 호가 대기 없이 단 1~2호가 틱 흔들림만으로 빠르게 회전하며 고빈도 복리 수익을 쌓고자 하는 투자자"
         }
     };
 
